@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.bitacora.pro.app-mergeDebugResources-49:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\agali\\.gradle\\caches\\transforms-3\\03deb6f5dc44e706fccd8e3bb68e35a9\\transformed\\core-1.12.0\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        }
+    ]
+}

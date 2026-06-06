@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="ic_launcher_bg">#FF6200EE</color>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="add_to_existing_job">Add to existing job:</string>
+    <string name="app_name">Bitacora Pro</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="category">Category</string>
+    <string name="client_name">Client Name</string>
+    <string name="create_job">Create Job</string>
+    <string name="create_new_job">Create New Job</string>
+    <string name="delete">Delete</string>
+    <string name="evidence">Evidence</string>
+    <string name="home_title">Bitacora Pro</string>
+    <string name="incoming_content">Incoming Content:</string>
+    <string name="job_details">Job Details</string>
+    <string name="job_title">Job Title</string>
+    <string name="no_evidence">No evidence yet</string>
+    <string name="no_jobs">No jobs yet</string>
+    <string name="no_jobs_description">Create a new job or share content from another app</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="service_type">Service Type</string>
+    <string name="share_intake">Share Intake</string>
+    <style name="Theme.BitacoraPro" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/purple_500</item>
+        <item name="android:colorPrimaryDark">@color/purple_700</item>
+        <item name="android:colorAccent">@color/teal_200</item>
+    </style>
+</resources>

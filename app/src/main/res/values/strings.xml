@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bitacora Pro</string>
+    <string name="home_title">Bitacora Pro</string>
+    <string name="create_new_job">Create New Job</string>
+    <string name="no_jobs">No jobs yet</string>
+    <string name="no_jobs_description">Create a new job or share content from another app</string>
+    <string name="job_title">Job Title</string>
+    <string name="client_name">Client Name</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="service_type">Service Type</string>
+    <string name="create_job">Create Job</string>
+    <string name="cancel">Cancel</string>
+    <string name="share_intake">Share Intake</string>
+    <string name="incoming_content">Incoming Content:</string>
+    <string name="add_to_existing_job">Add to existing job:</string>
+    <string name="job_details">Job Details</string>
+    <string name="evidence">Evidence</string>
+    <string name="no_evidence">No evidence yet</string>
+    <string name="category">Category</string>
+    <string name="delete">Delete</string>
+    <string name="back">Back</string>
+</resources>
