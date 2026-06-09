@@ -2,6 +2,9 @@ package com.bitacora.pro.ui.screens
 
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +44,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -58,6 +64,8 @@ import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
 import com.bitacora.pro.data.models.getSpanishLabel
 import com.bitacora.pro.data.storage.StorageManager
+import com.bitacora.pro.reports.JobPdfReportGenerator
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -74,6 +82,10 @@ fun JobDetailScreen(
     onBack: () -> Unit
 ) {
     val job = remember { mutableStateOf<JobFile?>(null) }
+    val generatedReportFile = remember { mutableStateOf<File?>(null) }
+    val isGeneratingReport = remember { mutableStateOf(false) }
+    val reportErrorMessage = remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     // Load job on screen composition
     LaunchedEffect(jobId) {
@@ -107,6 +119,68 @@ fun JobDetailScreen(
                 // Job metadata section
                 item {
                     JobMetadataCard(job.value!!)
+                }
+
+                // PDF Report section
+                item {
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    PdfReportSection(
+                        jobId = jobId,
+                        job = job.value!!,
+                        storageManager = storageManager,
+                        isGenerating = isGeneratingReport.value,
+                        generatedFile = generatedReportFile.value,
+                        errorMessage = reportErrorMessage.value,
+                        onGenerateReport = {
+                            isGeneratingReport.value = true
+                            reportErrorMessage.value = ""
+                            scope.launch {
+                                try {
+                                    val reportFile = withContext(Dispatchers.Default) {
+                                        JobPdfReportGenerator.generateReport(context, job.value!!, storageManager)
+                                    }
+                                    generatedReportFile.value = reportFile
+                                    if (reportFile == null) {
+                                        reportErrorMessage.value = "Error al generar el reporte"
+                                    }
+                                } catch (e: Exception) {
+                                    reportErrorMessage.value = "Error: ${e.message}"
+                                    e.printStackTrace()
+                                } finally {
+                                    isGeneratingReport.value = false
+                                }
+                            }
+                        },
+                        onOpenReport = { file ->
+                            val uri = storageManager.getReportFileUri(jobId, file.name)
+                            if (uri != null) {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "application/pdf")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        },
+                        onShareReport = { file ->
+                            val uri = storageManager.getReportFileUri(jobId, file.name)
+                            if (uri != null) {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/pdf"
+                                    putExtra(Intent.EXTRA_STREAM, uri as android.os.Parcelable)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                try {
+                                    context.startActivity(Intent.createChooser(intent, "Compartir Reporte"))
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    )
                 }
 
                 // Agenda section
@@ -249,9 +323,22 @@ private fun AgendaSection(
     onAgendaUpdated: () -> Unit
 ) {
     val showAddForm = remember { mutableStateOf(false) }
+    val showDatePicker = remember { mutableStateOf(false) }
     val newTitle = remember { mutableStateOf("") }
     val newDescription = remember { mutableStateOf("") }
     val newDueText = remember { mutableStateOf("") }
+    val newDueAt = remember { mutableStateOf<Long?>(null) }
+
+    if (showDatePicker.value) {
+        DatePickerDialog(
+            onDateSelected = { timestamp, dateText ->
+                newDueAt.value = timestamp
+                newDueText.value = dateText
+                showDatePicker.value = false
+            },
+            onDismiss = { showDatePicker.value = false }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -300,13 +387,25 @@ private fun AgendaSection(
                     maxLines = 3
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = newDueText.value,
-                    onValueChange = { newDueText.value = it },
-                    label = { Text("Fecha de vencimiento (ej: mañana, viernes)") },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = newDueText.value,
+                        onValueChange = { newDueText.value = it },
+                        label = { Text("Fecha de vencimiento") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    Button(
+                        onClick = { showDatePicker.value = true },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("📅")
+                    }
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = {
@@ -316,12 +415,14 @@ private fun AgendaSection(
                                 title = newTitle.value,
                                 description = newDescription.value,
                                 dueText = newDueText.value,
+                                dueAt = newDueAt.value,
                                 status = AgendaStatus.PENDING
                             )
                             storageManager.addAgendaItemToJob(jobId, agendaItem)
                             newTitle.value = ""
                             newDescription.value = ""
                             newDueText.value = ""
+                            newDueAt.value = null
                             showAddForm.value = false
                             onAgendaUpdated()
                         }
@@ -815,4 +916,137 @@ private fun SuggestionCard(
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+/**
+ * Displays PDF report generation section with open/share/save actions.
+ */
+@Composable
+private fun PdfReportSection(
+    jobId: String,
+    job: JobFile,
+    storageManager: StorageManager,
+    isGenerating: Boolean,
+    generatedFile: File?,
+    errorMessage: String = "",
+    onGenerateReport: () -> Unit,
+    onOpenReport: (File) -> Unit,
+    onShareReport: (File) -> Unit
+) {
+    val context = LocalContext.current
+    val saveMessage = remember { mutableStateOf("") }
+    
+    val saveFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri ->
+        if (uri != null && generatedFile != null) {
+            try {
+                generatedFile.inputStream().use { input ->
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        input.copyTo(output)
+                        saveMessage.value = "Archivo guardado exitosamente"
+                    }
+                }
+            } catch (e: Exception) {
+                saveMessage.value = "Error al guardar: ${e.message}"
+                e.printStackTrace()
+            }
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                "Reporte PDF",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Show error message if generation failed
+            if (errorMessage.isNotEmpty()) {
+                Text(
+                    errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
+            // Show save message feedback
+            if (saveMessage.value.isNotEmpty()) {
+                Text(
+                    saveMessage.value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (saveMessage.value.contains("exitosamente"))
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
+            if (generatedFile != null) {
+                Text(
+                    "Reporte generado: ${generatedFile.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { onOpenReport(generatedFile) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text("Abrir")
+                    }
+                    Button(
+                        onClick = { onShareReport(generatedFile) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text("Compartir")
+                    }
+                    Button(
+                        onClick = {
+                            val fileName = generatedFile.name
+                            saveFileLauncher.launch(fileName)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text("Guardar")
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Button(
+                onClick = onGenerateReport,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                enabled = !isGenerating
+            ) {
+                Text(if (isGenerating) "Generando..." else "Generar Reporte PDF")
+            }
+        }
+    }
 }

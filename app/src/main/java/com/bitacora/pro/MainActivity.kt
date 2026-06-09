@@ -22,6 +22,7 @@ import com.bitacora.pro.ui.screens.HomeScreen
 import com.bitacora.pro.ui.screens.JobDetailScreen
 import com.bitacora.pro.ui.screens.ShareIntakeScreen
 import com.bitacora.pro.ui.screens.SharedContent
+import com.bitacora.pro.ui.screens.WelcomeScreen
 import com.bitacora.pro.ui.theme.BitacoraProTheme
 
 /**
@@ -64,7 +65,17 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val sharedContent = pendingSharedContent
 
-                NavHost(navController = navController, startDestination = NavRoutes.HOME) {
+                NavHost(navController = navController, startDestination = NavRoutes.WELCOME) {
+                    composable(NavRoutes.WELCOME) {
+                        WelcomeScreen(
+                            onContinue = {
+                                navController.navigate(NavRoutes.HOME) {
+                                    popUpTo(NavRoutes.WELCOME) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+
                     composable(NavRoutes.HOME) {
                         HomeScreen(
                             storageManager = storageManager,
@@ -133,12 +144,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Navigate to share intake AFTER NavHost is composed
+                // If there's shared content, skip welcome and go directly to share intake
                 LaunchedEffect(sharedContent.value) {
                     if (sharedContent.value != null) {
                         if (DEBUG_SHARE_INTENTS) Log.d("MainActivity", "LaunchedEffect: Navigating to SHARE_INTAKE")
                         navController.navigate(NavRoutes.SHARE_INTAKE) {
                             launchSingleTop = true
-                            popUpTo(NavRoutes.HOME) { inclusive = false }
+                            popUpTo(NavRoutes.WELCOME) { inclusive = true }
                         }
                     }
                 }

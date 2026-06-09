@@ -4,6 +4,7 @@ package com.bitacora.pro.ui.navigation
  * Navigation routes for the app.
  */
 object NavRoutes {
+    const val WELCOME = "welcome"
     const val HOME = "home"
     const val SHARE_INTAKE = "share_intake"
     const val CREATE_JOB = "create_job"

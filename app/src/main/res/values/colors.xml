@@ -1,11 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Professional Teal Color Palette -->
+    <color name="teal_primary">#FF00897B</color>
+    <color name="teal_primary_light">#FF26A69A</color>
+    <color name="teal_primary_dark">#FF00695C</color>
+    <color name="teal_secondary">#FF4DB6AC</color>
+    <color name="teal_secondary_light">#FF80CBC4</color>
+    <color name="teal_secondary_dark">#FF00897B</color>
+    
+    <!-- Neutral Colors -->
+    <color name="neutral_dark">#FF212121</color>
+    <color name="neutral_gray">#FF424242</color>
+    <color name="neutral_light_gray">#FF757575</color>
+    <color name="neutral_lighter_gray">#FFBDBDBD</color>
+    <color name="neutral_very_light">#FFF5F5F5</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    
+    <!-- Legacy colors (kept for compatibility) -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="ic_launcher_bg">#FF6200EE</color>
+    
+    <!-- App launcher background -->
+    <color name="ic_launcher_bg">#FF00897B</color>
 </resources>

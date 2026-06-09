@@ -399,4 +399,42 @@ class StorageManager(private val context: Context) {
             else -> "bin"
         }
     }
+
+    /**
+     * Gets the reports directory for a job.
+     * Creates it if it doesn't exist.
+     */
+    fun getReportsDir(jobId: String): File {
+        val jobDir = File(jobsDir, jobId)
+        return File(jobDir, "reports").apply { mkdirs() }
+    }
+
+    /**
+     * Gets a specific report file.
+     */
+    fun getReportFile(jobId: String, fileName: String): File {
+        return File(getReportsDir(jobId), fileName)
+    }
+
+    /**
+     * Gets the URI for a report file using FileProvider.
+     * This is used to safely share reports with other apps.
+     */
+    fun getReportFileUri(jobId: String, fileName: String): Uri? {
+        return try {
+            val file = getReportFile(jobId, fileName)
+            if (file.exists()) {
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bitacora Pro</string>
+    <string name="app_version">v0.5.1</string>
     <string name="home_title">Bitacora Pro</string>
     <string name="create_new_job">Create New Job</string>
     <string name="no_jobs">No jobs yet</string>
