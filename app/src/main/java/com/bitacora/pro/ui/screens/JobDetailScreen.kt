@@ -1,6 +1,10 @@
 package com.bitacora.pro.ui.screens
 
+import android.content.Intent
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,8 +42,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bitacora.pro.assistant.AgendaSuggestionEngine
 import com.bitacora.pro.data.models.AgendaItem
@@ -45,6 +56,7 @@ import com.bitacora.pro.data.models.EvidenceCategory
 import com.bitacora.pro.data.models.EvidenceItem
 import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
+import com.bitacora.pro.data.models.getSpanishLabel
 import com.bitacora.pro.data.storage.StorageManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,10 +83,10 @@ fun JobDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Job Details") },
+                title = { Text("Detalles del Trabajo") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -113,7 +125,7 @@ fun JobDetailScreen(
                 if (job.value!!.evidence.isNotEmpty()) {
                     item {
                         Text(
-                            "Evidence (${job.value!!.evidence.size})",
+                            "Evidencia (${job.value!!.evidence.size})",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -124,7 +136,7 @@ fun JobDetailScreen(
                     items(groupedEvidence.toList()) { (category, evidenceList) ->
                         Column {
                             Text(
-                                category.name,
+                                category.getSpanishLabel(),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -151,11 +163,19 @@ fun JobDetailScreen(
                     }
                 } else {
                     item {
-                        Text(
-                            "No evidence yet",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 16.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Sin evidencia aún",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -185,12 +205,12 @@ private fun JobMetadataCard(job: JobFile) {
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
-            MetadataRow("Client:", job.clientName)
-            MetadataRow("Phone:", job.phone)
-            MetadataRow("Service:", job.serviceType)
-            MetadataRow("Status:", job.status.name)
-            MetadataRow("Created:", formatDate(job.createdAt))
-            MetadataRow("Updated:", formatDate(job.updatedAt))
+            MetadataRow("Cliente:", job.clientName)
+            MetadataRow("Teléfono:", job.phone)
+            MetadataRow("Servicio:", job.serviceType)
+            MetadataRow("Estado:", job.status.name)
+            MetadataRow("Creado:", formatDate(job.createdAt))
+            MetadataRow("Actualizado:", formatDate(job.updatedAt))
         }
     }
 }
@@ -258,7 +278,7 @@ private fun AgendaSection(
                     onClick = { showAddForm.value = !showAddForm.value },
                     modifier = Modifier.padding(start = 8.dp)
                 ) {
-                    Text(if (showAddForm.value) "Cancel" else "+ Add")
+                    Text(if (showAddForm.value) "Cancelar" else "+ Agregar")
                 }
             }
 
@@ -267,7 +287,7 @@ private fun AgendaSection(
                 TextField(
                     value = newTitle.value,
                     onValueChange = { newTitle.value = it },
-                    label = { Text("Title") },
+                    label = { Text("Título") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -275,7 +295,7 @@ private fun AgendaSection(
                 TextField(
                     value = newDescription.value,
                     onValueChange = { newDescription.value = it },
-                    label = { Text("Description") },
+                    label = { Text("Descripción") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3
                 )
@@ -283,7 +303,7 @@ private fun AgendaSection(
                 TextField(
                     value = newDueText.value,
                     onValueChange = { newDueText.value = it },
-                    label = { Text("Due date (e.g., mañana, viernes)") },
+                    label = { Text("Fecha de vencimiento (ej: mañana, viernes)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -308,7 +328,7 @@ private fun AgendaSection(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Add Agenda Item")
+                    Text("Agregar Elemento")
                 }
             }
 
@@ -321,7 +341,7 @@ private fun AgendaSection(
                 // Show pending items first
                 if (pendingItems.isNotEmpty()) {
                     Text(
-                        "Pending",
+                        "Pendiente",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -340,7 +360,7 @@ private fun AgendaSection(
                 // Show done items
                 if (doneItems.isNotEmpty()) {
                     Text(
-                        "Done",
+                        "Completado",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -358,8 +378,9 @@ private fun AgendaSection(
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "No agenda items yet",
-                    style = MaterialTheme.typography.bodySmall
+                    "Sin elementos de agenda aún",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -377,6 +398,32 @@ private fun AgendaItemCard(
     onStatusChanged: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val showDeleteConfirm = remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm.value = false },
+            title = { Text("Eliminar Elemento") },
+            text = { Text("¿Estás seguro de que deseas eliminar este elemento de agenda?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        storageManager.deleteAgendaItem(jobId, item.id)
+                        showDeleteConfirm.value = false
+                        onDelete()
+                    }
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteConfirm.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -403,7 +450,7 @@ private fun AgendaItemCard(
                     )
                     if (item.dueText.isNotEmpty()) {
                         Text(
-                            text = "Due: ${item.dueText}",
+                            text = "Vencimiento: ${item.dueText}",
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -417,16 +464,13 @@ private fun AgendaItemCard(
                         },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
-                        Text(if (item.status == AgendaStatus.PENDING) "Mark Done" else "Reopen")
+                        Text(if (item.status == AgendaStatus.PENDING) "Completar" else "Reabrir")
                     }
                     IconButton(
-                        onClick = {
-                            storageManager.deleteAgendaItem(jobId, item.id)
-                            onDelete()
-                        },
+                        onClick = { showDeleteConfirm.value = true },
                         modifier = Modifier.padding(0.dp)
                     ) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete agenda item")
+                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar elemento de agenda")
                     }
                 }
             }
@@ -456,6 +500,31 @@ private fun EvidenceCard(
     val expandedCategory = remember { mutableStateOf(false) }
     val showSuggestions = remember { mutableStateOf(false) }
     val suggestions = remember { mutableStateOf<List<AgendaItem>>(emptyList()) }
+    val showDeleteConfirm = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    if (showDeleteConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm.value = false },
+            title = { Text("Eliminar Evidencia") },
+            text = { Text("¿Estás seguro de que deseas eliminar esta evidencia?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm.value = false
+                        onDelete()
+                    }
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDeleteConfirm.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -475,21 +544,34 @@ private fun EvidenceCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = evidence.fileName.ifEmpty { evidence.type.name },
+                        text = evidence.fileName.ifEmpty { evidence.type.getSpanishLabel() },
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = evidence.type.name,
+                        text = evidence.type.getSpanishLabel(),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.padding(0.dp)) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete evidence")
+                IconButton(onClick = { showDeleteConfirm.value = true }, modifier = Modifier.padding(0.dp)) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Eliminar evidencia")
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Image thumbnail for IMAGE evidence
+            if (evidence.type == EvidenceType.IMAGE) {
+                ImageThumbnail(
+                    jobId = jobId,
+                    evidence = evidence,
+                    storageManager = storageManager,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .padding(bottom = 8.dp)
+                )
+            }
 
             // Category selector
             Row(
@@ -498,14 +580,14 @@ private fun EvidenceCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Category:",
+                    text = "Categoría:",
                     style = MaterialTheme.typography.labelSmall
                 )
                 Button(
                     onClick = { expandedCategory.value = true },
                     modifier = Modifier.padding(start = 8.dp)
                 ) {
-                    Text(evidence.category.name)
+                    Text(evidence.category.getSpanishLabel())
                 }
                 DropdownMenu(
                     expanded = expandedCategory.value,
@@ -513,13 +595,38 @@ private fun EvidenceCard(
                 ) {
                     EvidenceCategory.values().forEach { category ->
                         DropdownMenuItem(
-                            text = { Text(category.name) },
+                            text = { Text(category.getSpanishLabel()) },
                             onClick = {
                                 onCategoryChanged(category.name)
                                 expandedCategory.value = false
                             }
                         )
                     }
+                }
+            }
+
+            // Open button for file-based evidence (IMAGE, PDF, AUDIO)
+            if (evidence.type in listOf(EvidenceType.IMAGE, EvidenceType.PDF, EvidenceType.AUDIO)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        val fileUri = storageManager.getEvidenceFileUri(jobId, evidence.id)
+                        if (fileUri != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(fileUri, evidence.mimeType)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.OpenInNew, contentDescription = "Abrir", modifier = Modifier.padding(end = 4.dp))
+                    Text("Abrir")
                 }
             }
 
@@ -543,7 +650,7 @@ private fun EvidenceCard(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Suggest Agenda")
+                    Text("Sugerir Agenda")
                 }
 
                 // Show suggestions if available
@@ -555,7 +662,7 @@ private fun EvidenceCard(
                             .padding(8.dp)
                     ) {
                         Text(
-                            "Suggestions:",
+                            "Sugerencias:",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -578,7 +685,7 @@ private fun EvidenceCard(
                                 .fillMaxWidth()
                                 .padding(top = 8.dp)
                         ) {
-                            Text("Close")
+                            Text("Cerrar")
                         }
                     }
                 }
@@ -589,6 +696,63 @@ private fun EvidenceCard(
                 text = formatDate(evidence.createdAt),
                 style = MaterialTheme.typography.labelSmall
             )
+        }
+    }
+}
+
+/**
+ * Displays an image thumbnail for IMAGE evidence.
+ */
+@Composable
+private fun ImageThumbnail(
+    jobId: String,
+    evidence: EvidenceItem,
+    storageManager: StorageManager,
+    modifier: Modifier = Modifier
+) {
+    val bitmap = remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(evidence.id) {
+        val file = storageManager.getEvidenceFile(jobId, evidence.id)
+        if (file != null && file.exists()) {
+            try {
+                bitmap.value = BitmapFactory.decodeFile(file.absolutePath)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    if (bitmap.value != null) {
+        Card(
+            modifier = modifier,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Image(
+                bitmap = bitmap.value!!.asImageBitmap(),
+                contentDescription = "Miniatura de evidencia",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+    } else {
+        Card(
+            modifier = modifier,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Cargando imagen...",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
     }
 }
@@ -623,7 +787,7 @@ private fun SuggestionCard(
             )
             if (suggestion.dueText.isNotEmpty()) {
                 Text(
-                    text = "Due: ${suggestion.dueText}",
+                    text = "Vencimiento: ${suggestion.dueText}",
                     style = MaterialTheme.typography.labelSmall
                 )
             }
@@ -639,7 +803,7 @@ private fun SuggestionCard(
                 onClick = onAdd,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Add")
+                Text("Agregar")
             }
         }
     }

@@ -1,3 +1,26 @@
-gradle-*-all.zip
-gradle-*-bin.zip
+# Gradle / Android build outputs
 .gradle/
+build/
+app/build/
+
+# Local machine config
+local.properties
+
+# APK / bundles / signing
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+# Local tool downloads / extracted SDKs
+/gradle-*.zip
+/gradle-*/
+/java*.zip
+/jdk-*/

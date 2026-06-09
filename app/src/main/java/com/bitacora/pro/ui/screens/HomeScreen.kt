@@ -72,14 +72,22 @@ fun HomeScreen(
                 onClick = onCreateJobClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Create new job")
+                Icon(Icons.Filled.Add, contentDescription = "Crear nuevo trabajo")
             }
         }
     ) { paddingValues ->
-        if (jobs.value.isEmpty()) {
-            EmptyJobsView(paddingValues, onCreateJobClick)
-        } else {
-            JobsList(jobs.value, paddingValues, onJobClick)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (jobs.value.isEmpty()) {
+                EmptyJobsView(Modifier.weight(1f), onCreateJobClick)
+            } else {
+                JobsList(jobs.value, Modifier.weight(1f), onJobClick)
+            }
+            // Version footer
+            AppVersionFooter()
         }
     }
 }
@@ -88,11 +96,9 @@ fun HomeScreen(
  * Displays an empty state when no jobs exist.
  */
 @Composable
-private fun EmptyJobsView(paddingValues: PaddingValues, onCreateJobClick: () -> Unit) {
+private fun EmptyJobsView(modifier: Modifier = Modifier, onCreateJobClick: () -> Unit) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -101,19 +107,20 @@ private fun EmptyJobsView(paddingValues: PaddingValues, onCreateJobClick: () -> 
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                "No jobs yet",
+                "Sin trabajos aún",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Create a new job or share content from another app",
+                "Crea un nuevo trabajo o comparte contenido desde otra aplicación",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = onCreateJobClick) {
-                Text("Create New Job")
+                Text("Crear Nuevo Trabajo")
             }
         }
     }
@@ -125,13 +132,11 @@ private fun EmptyJobsView(paddingValues: PaddingValues, onCreateJobClick: () -> 
 @Composable
 private fun JobsList(
     jobs: List<JobFile>,
-    paddingValues: PaddingValues,
+    modifier: Modifier = Modifier,
     onJobClick: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -168,15 +173,15 @@ private fun JobCard(job: JobFile, onJobClick: (String) -> Unit) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Client: ${job.clientName}",
+                text = "Cliente: ${job.clientName}",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "Phone: ${job.phone}",
+                text = "Teléfono: ${job.phone}",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "Service: ${job.serviceType}",
+                text = "Servicio: ${job.serviceType}",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -186,7 +191,7 @@ private fun JobCard(job: JobFile, onJobClick: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Evidence: ${job.evidence.size}",
+                    text = "Evidencia: ${job.evidence.size}",
                     style = MaterialTheme.typography.labelSmall
                 )
                 Text(
@@ -195,6 +200,25 @@ private fun JobCard(job: JobFile, onJobClick: (String) -> Unit) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Displays app version footer.
+ */
+@Composable
+private fun AppVersionFooter() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Bitacora Pro v0.4.1",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

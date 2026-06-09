@@ -281,6 +281,7 @@ class StorageManager(private val context: Context) {
     fun updateEvidenceCategory(jobId: String, evidenceId: String, newCategory: String) {
         try {
             val job = loadJob(jobId) ?: return
+            val now = System.currentTimeMillis()
             val updatedEvidence = job.evidence.map { evidence ->
                 if (evidence.id == evidenceId) {
                     evidence.copy(category = enumValueOf(newCategory))
@@ -290,7 +291,8 @@ class StorageManager(private val context: Context) {
             }
             val updatedJob = job.copy(
                 evidence = updatedEvidence,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = now,
+                lastUsedAt = now
             )
             saveJobMetadata(updatedJob)
         } catch (e: Exception) {
@@ -316,10 +318,12 @@ class StorageManager(private val context: Context) {
             }
 
             // Update job metadata
+            val now = System.currentTimeMillis()
             val updatedEvidence = job.evidence.filter { it.id != evidenceId }
             val updatedJob = job.copy(
                 evidence = updatedEvidence,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = now,
+                lastUsedAt = now
             )
             saveJobMetadata(updatedJob)
         } catch (e: Exception) {
@@ -336,6 +340,28 @@ class StorageManager(private val context: Context) {
             val evidence = job.evidence.find { it.id == evidenceId } ?: return null
             if (evidence.fileName.isNotEmpty()) {
                 File(File(jobsDir, jobId), "evidence/${evidence.fileName}")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Gets the URI for an evidence file using FileProvider.
+     * This is used to safely share files with other apps.
+     */
+    fun getEvidenceFileUri(jobId: String, evidenceId: String): Uri? {
+        return try {
+            val file = getEvidenceFile(jobId, evidenceId) ?: return null
+            if (file.exists()) {
+                androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
             } else {
                 null
             }

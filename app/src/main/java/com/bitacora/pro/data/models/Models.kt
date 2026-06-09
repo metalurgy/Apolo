@@ -139,3 +139,35 @@ data class JobFile(
     val agendaItems: List<AgendaItem> = emptyList(),
     val notes: String = ""
 ) : Serializable
+
+/**
+ * Helper function to get Spanish label for EvidenceCategory.
+ */
+fun EvidenceCategory.getSpanishLabel(): String = when (this) {
+    EvidenceCategory.UNCLASSIFIED -> "Sin clasificar"
+    EvidenceCategory.BEFORE -> "Antes"
+    EvidenceCategory.DURING -> "Durante"
+    EvidenceCategory.AFTER -> "Después"
+    EvidenceCategory.MATERIAL -> "Material"
+    EvidenceCategory.PAYMENT -> "Pago"
+    EvidenceCategory.CLIENT_MESSAGE -> "Mensaje del cliente"
+}
+
+/**
+ * Helper function to get Spanish label for EvidenceType.
+ */
+fun EvidenceType.getSpanishLabel(): String = when (this) {
+    EvidenceType.TEXT -> "Texto"
+    EvidenceType.IMAGE -> "Imagen"
+    EvidenceType.AUDIO -> "Audio"
+    EvidenceType.PDF -> "PDF"
+}
+
+/**
+ * Helper function to get Spanish label for AgendaStatus.
+ */
+fun AgendaStatus.getSpanishLabel(): String = when (this) {
+    AgendaStatus.PENDING -> "Pendiente"
+    AgendaStatus.DONE -> "Completado"
+    AgendaStatus.CANCELLED -> "Cancelado"
+}

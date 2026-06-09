@@ -40,6 +40,10 @@ import com.bitacora.pro.ui.theme.BitacoraProTheme
  */
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        private const val DEBUG_SHARE_INTENTS = false // Gate debug logs for pilot testing
+    }
+
     private lateinit var storageManager: StorageManager
     private val pendingSharedContent = mutableStateOf<SharedContent?>(null)
 
@@ -50,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
         // Extract shared content from intent BEFORE setContent
         val extractedContent = extractSharedContentFromIntent(intent)
-        if (extractedContent != null) {
+        if (DEBUG_SHARE_INTENTS && extractedContent != null) {
             Log.d("MainActivity", "onCreate: Extracted shared content - files: ${extractedContent.sharedFiles.size}, text length: ${extractedContent.textContent.length}")
         }
         pendingSharedContent.value = extractedContent
@@ -131,7 +135,7 @@ class MainActivity : ComponentActivity() {
                 // Navigate to share intake AFTER NavHost is composed
                 LaunchedEffect(sharedContent.value) {
                     if (sharedContent.value != null) {
-                        Log.d("MainActivity", "LaunchedEffect: Navigating to SHARE_INTAKE")
+                        if (DEBUG_SHARE_INTENTS) Log.d("MainActivity", "LaunchedEffect: Navigating to SHARE_INTAKE")
                         navController.navigate(NavRoutes.SHARE_INTAKE) {
                             launchSingleTop = true
                             popUpTo(NavRoutes.HOME) { inclusive = false }
@@ -149,15 +153,15 @@ class MainActivity : ComponentActivity() {
     private fun extractSharedContentFromIntent(intent: Intent?): SharedContent? {
         return when (intent?.action) {
             Intent.ACTION_SEND -> {
-                Log.d("MainActivity", "extractSharedContentFromIntent: ACTION_SEND")
+                if (DEBUG_SHARE_INTENTS) Log.d("MainActivity", "extractSharedContentFromIntent: ACTION_SEND")
                 handleShareIntent(intent)
             }
             Intent.ACTION_SEND_MULTIPLE -> {
-                Log.d("MainActivity", "extractSharedContentFromIntent: ACTION_SEND_MULTIPLE")
+                if (DEBUG_SHARE_INTENTS) Log.d("MainActivity", "extractSharedContentFromIntent: ACTION_SEND_MULTIPLE")
                 handleShareMultipleIntent(intent)
             }
             else -> {
-                Log.d("MainActivity", "extractSharedContentFromIntent: No share action")
+                if (DEBUG_SHARE_INTENTS) Log.d("MainActivity", "extractSharedContentFromIntent: No share action")
                 null
             }
         }
@@ -252,7 +256,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val extractedContent = extractSharedContentFromIntent(intent)
-        if (extractedContent != null) {
+        if (DEBUG_SHARE_INTENTS && extractedContent != null) {
             Log.d("MainActivity", "onNewIntent: Updating pendingSharedContent - files: ${extractedContent.sharedFiles.size}, text length: ${extractedContent.textContent.length}")
         }
         pendingSharedContent.value = extractedContent

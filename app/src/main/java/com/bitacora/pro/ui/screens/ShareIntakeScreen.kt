@@ -72,10 +72,10 @@ fun ShareIntakeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Share Intake") },
+                title = { Text("Recibir Contenido") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -113,7 +113,7 @@ fun ShareIntakeScreen(
                                 .fillMaxWidth()
                                 .height(48.dp)
                         ) {
-                            Text("Add to Most Recent Job")
+                            Text("Agregar al Trabajo Reciente")
                         }
                     }
                 }
@@ -122,7 +122,7 @@ fun ShareIntakeScreen(
                 if (jobs.value.isNotEmpty()) {
                     item {
                         Text(
-                            "Or select another job:",
+                            "O selecciona otro trabajo:",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -150,7 +150,7 @@ fun ShareIntakeScreen(
                         .weight(1f)
                         .height(48.dp)
                 ) {
-                    Text("Create New Job")
+                    Text("Crear Nuevo")
                 }
 
                 if (selectedJobId.value != null) {
@@ -162,7 +162,7 @@ fun ShareIntakeScreen(
                             .weight(1f)
                             .height(48.dp)
                     ) {
-                        Text("Add to Job")
+                        Text("Agregar")
                     }
                 }
             }
@@ -188,7 +188,7 @@ private fun SharedContentSummary(sharedContent: SharedContent) {
                 .padding(16.dp)
         ) {
             Text(
-                "Incoming Content:",
+                "Contenido Recibido:",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -196,7 +196,7 @@ private fun SharedContentSummary(sharedContent: SharedContent) {
 
             if (sharedContent.textContent.isNotEmpty()) {
                 Text(
-                    "Text: ${sharedContent.textContent.take(100)}${if (sharedContent.textContent.length > 100) "..." else ""}",
+                    "Texto: ${sharedContent.textContent.take(100)}${if (sharedContent.textContent.length > 100) "..." else ""}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -204,7 +204,7 @@ private fun SharedContentSummary(sharedContent: SharedContent) {
 
             if (sharedContent.sharedFiles.isNotEmpty()) {
                 Text(
-                    "Files: ${sharedContent.sharedFiles.size}",
+                    "Archivos: ${sharedContent.sharedFiles.size}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 sharedContent.sharedFiles.forEach { fileDescriptor ->
@@ -260,7 +260,7 @@ private fun JobSelectionCard(
                 onClick = onSelect,
                 modifier = Modifier.padding(start = 8.dp)
             ) {
-                Text(if (isSelected) "Selected" else "Select")
+                Text(if (isSelected) "Seleccionado" else "Seleccionar")
             }
         }
     }

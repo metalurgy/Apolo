@@ -55,10 +55,10 @@ fun CreateJobScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create New Job") },
+                title = { Text("Crear Nuevo Trabajo") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -80,7 +80,7 @@ fun CreateJobScreen(
                     OutlinedTextField(
                         value = title.value,
                         onValueChange = { title.value = it },
-                        label = { Text("Job Title") },
+                        label = { Text("Título del trabajo") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -90,7 +90,7 @@ fun CreateJobScreen(
                     OutlinedTextField(
                         value = clientName.value,
                         onValueChange = { clientName.value = it },
-                        label = { Text("Client Name") },
+                        label = { Text("Cliente") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -100,7 +100,7 @@ fun CreateJobScreen(
                     OutlinedTextField(
                         value = phone.value,
                         onValueChange = { phone.value = it },
-                        label = { Text("Phone Number") },
+                        label = { Text("Teléfono") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -110,7 +110,7 @@ fun CreateJobScreen(
                     OutlinedTextField(
                         value = serviceType.value,
                         onValueChange = { serviceType.value = it },
-                        label = { Text("Service Type") },
+                        label = { Text("Servicio") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -119,7 +119,7 @@ fun CreateJobScreen(
                     // Display shared content info if available
                     if (sharedContent != null && (sharedContent.textContent.isNotEmpty() || sharedContent.sharedFiles.isNotEmpty())) {
                         Text(
-                            "Shared Content to Attach:",
+                            "Contenido recibido para adjuntar:",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -150,7 +150,7 @@ fun CreateJobScreen(
                                 .height(48.dp),
                             enabled = !isLoading.value
                         ) {
-                            Text("Cancel")
+                            Text("Cancelar")
                         }
                         Spacer(modifier = Modifier.padding(8.dp))
                         Button(
@@ -181,7 +181,7 @@ fun CreateJobScreen(
                                 .height(48.dp),
                             enabled = !isLoading.value && title.value.isNotEmpty() && clientName.value.isNotEmpty()
                         ) {
-                            Text("Create Job")
+                            Text("Crear Trabajo")
                         }
                     }
                 }
