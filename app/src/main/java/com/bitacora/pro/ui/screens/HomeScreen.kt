@@ -215,7 +215,7 @@ private fun AppVersionFooter() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Bitacora Pro v0.5.1",
+            text = "Bitacora Pro v0.6",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

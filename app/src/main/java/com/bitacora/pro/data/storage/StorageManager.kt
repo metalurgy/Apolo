@@ -6,6 +6,7 @@ import com.bitacora.pro.data.models.AgendaItem
 import com.bitacora.pro.data.models.EvidenceItem
 import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
+import com.bitacora.pro.notifications.AgendaNotificationScheduler
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
@@ -229,17 +230,25 @@ class StorageManager(private val context: Context) {
     /**
      * Updates the status of an agenda item.
      * Also updates lastUsedAt to current time.
+     * Cancels reminder notifications when item is marked as DONE.
      */
     fun updateAgendaItemStatus(jobId: String, agendaItemId: String, newStatus: String) {
         try {
             val job = loadJob(jobId) ?: return
             val now = System.currentTimeMillis()
+            val scheduler = AgendaNotificationScheduler(context)
+            
             val updatedAgendaItems = job.agendaItems.map { item ->
                 if (item.id == agendaItemId) {
-                    item.copy(
+                    val updatedItem = item.copy(
                         status = enumValueOf(newStatus),
                         updatedAt = now
                     )
+                    // Cancel reminder if item is marked as DONE
+                    if (newStatus == "DONE" && item.notificationId != 0) {
+                        scheduler.cancelReminder(item)
+                    }
+                    updatedItem
                 } else {
                     item
                 }
@@ -256,13 +265,125 @@ class StorageManager(private val context: Context) {
     }
 
     /**
+     * Archives an agenda item (changes status to ARCHIVED).
+     * Also updates lastUsedAt to current time.
+     * Cancels any scheduled reminder notifications for the item.
+     */
+    fun archiveAgendaItem(jobId: String, agendaItemId: String) {
+        try {
+            val job = loadJob(jobId) ?: return
+            val now = System.currentTimeMillis()
+            val scheduler = AgendaNotificationScheduler(context)
+            
+            val updatedAgendaItems = job.agendaItems.map { item ->
+                if (item.id == agendaItemId) {
+                    val updatedItem = item.copy(
+                        status = com.bitacora.pro.data.models.AgendaStatus.ARCHIVED,
+                        updatedAt = now
+                    )
+                    // Cancel reminder if item has one scheduled
+                    if (item.notificationId != 0) {
+                        scheduler.cancelReminder(item)
+                    }
+                    updatedItem
+                } else {
+                    item
+                }
+            }
+            val updatedJob = job.copy(
+                agendaItems = updatedAgendaItems,
+                updatedAt = now,
+                lastUsedAt = now
+            )
+            saveJobMetadata(updatedJob)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Updates an existing agenda item in a job.
+     * Handles reminder rescheduling if reminder settings changed.
+     * Preserves sourceEvidenceId and createdAt.
+     * Updates job.updatedAt and job.lastUsedAt.
+     *
+     * @param jobId The ID of the job containing the agenda item
+     * @param updatedItem The updated agenda item
+     * @param scheduler Optional AgendaNotificationScheduler for reminder handling
+     */
+    fun updateAgendaItem(
+        jobId: String,
+        updatedItem: AgendaItem,
+        scheduler: AgendaNotificationScheduler? = null
+    ) {
+        try {
+            val job = loadJob(jobId) ?: return
+            val now = System.currentTimeMillis()
+            
+            val updatedAgendaItems = job.agendaItems.map { item ->
+                if (item.id == updatedItem.id) {
+                    // Preserve sourceEvidenceId and createdAt
+                    val preservedItem = updatedItem.copy(
+                        sourceEvidenceId = item.sourceEvidenceId,
+                        createdAt = item.createdAt,
+                        updatedAt = now
+                    )
+                    
+                    // Handle reminder rescheduling if scheduler is provided
+                    if (scheduler != null) {
+                        // Check if reminder settings changed
+                        val reminderChanged = (item.reminderEnabled != preservedItem.reminderEnabled) ||
+                                (item.reminderOffsetDays != preservedItem.reminderOffsetDays) ||
+                                (item.dueAt != preservedItem.dueAt)
+                        
+                        if (reminderChanged) {
+                            // Reschedule reminder if item is PENDING and reminder is enabled
+                            if (preservedItem.status == com.bitacora.pro.data.models.AgendaStatus.PENDING &&
+                                preservedItem.reminderEnabled && preservedItem.dueAt != null) {
+                                scheduler.rescheduleReminder(item, preservedItem)
+                            } else {
+                                // Cancel reminder if item is DONE/ARCHIVED or reminder disabled
+                                if (item.notificationId != 0) {
+                                    scheduler.cancelReminder(item)
+                                }
+                            }
+                        }
+                    }
+                    
+                    preservedItem
+                } else {
+                    item
+                }
+            }
+            
+            val updatedJob = job.copy(
+                agendaItems = updatedAgendaItems,
+                updatedAt = now,
+                lastUsedAt = now
+            )
+            saveJobMetadata(updatedJob)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
      * Deletes an agenda item from a job.
      * Also updates lastUsedAt to current time.
+     * Cancels any scheduled reminder notifications for the item.
      */
     fun deleteAgendaItem(jobId: String, agendaItemId: String) {
         try {
             val job = loadJob(jobId) ?: return
             val now = System.currentTimeMillis()
+            val scheduler = AgendaNotificationScheduler(context)
+            
+            // Find the item to delete and cancel its reminder
+            val itemToDelete = job.agendaItems.find { it.id == agendaItemId }
+            if (itemToDelete != null && itemToDelete.notificationId != 0) {
+                scheduler.cancelReminder(itemToDelete)
+            }
+            
             val updatedAgendaItems = job.agendaItems.filter { it.id != agendaItemId }
             val updatedJob = job.copy(
                 agendaItems = updatedAgendaItems,

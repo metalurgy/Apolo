@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bitacora.pro.assistant.AgendaSuggestionEngine
+import com.bitacora.pro.assistant.AssistantResult
+import com.bitacora.pro.assistant.JobAssistantEngine
 import com.bitacora.pro.data.models.AgendaItem
 import com.bitacora.pro.data.models.AgendaStatus
 import com.bitacora.pro.data.models.EvidenceCategory
@@ -64,6 +67,7 @@ import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
 import com.bitacora.pro.data.models.getSpanishLabel
 import com.bitacora.pro.data.storage.StorageManager
+import com.bitacora.pro.notifications.AgendaNotificationScheduler
 import com.bitacora.pro.reports.JobPdfReportGenerator
 import java.io.File
 import java.text.SimpleDateFormat
@@ -85,6 +89,9 @@ fun JobDetailScreen(
     val generatedReportFile = remember { mutableStateOf<File?>(null) }
     val isGeneratingReport = remember { mutableStateOf(false) }
     val reportErrorMessage = remember { mutableStateOf("") }
+    val assistantResult = remember { mutableStateOf<AssistantResult?>(null) }
+    val isAnalyzingJob = remember { mutableStateOf(false) }
+    val assistantErrorMessage = remember { mutableStateOf("") }
     val context = LocalContext.current
 
     // Load job on screen composition
@@ -191,6 +198,56 @@ fun JobDetailScreen(
                         storageManager = storageManager,
                         onAgendaUpdated = {
                             job.value = storageManager.loadJob(jobId)
+                        }
+                    )
+                }
+
+                // Assistant section
+                item {
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    AssistantSection(
+                        isAnalyzing = isAnalyzingJob.value,
+                        result = assistantResult.value,
+                        errorMessage = assistantErrorMessage.value,
+                        onAnalyze = {
+                            isAnalyzingJob.value = true
+                            assistantErrorMessage.value = ""
+                            scope.launch {
+                                try {
+                                    val result = withContext(Dispatchers.Default) {
+                                        JobAssistantEngine.analyzeJob(job.value!!)
+                                    }
+                                    assistantResult.value = result
+                                } catch (e: Exception) {
+                                    assistantErrorMessage.value = "Error al analizar: ${e.message}"
+                                    e.printStackTrace()
+                                } finally {
+                                    isAnalyzingJob.value = false
+                                }
+                            }
+                        },
+                        onAddTaskFromAction = { actionText ->
+                            // Extract task title from action text (remove emoji and prefix)
+                            val taskTitle = actionText
+                                .replace(Regex("^[🔴📋📸💰✏️📦📄]\\s*"), "")
+                                .replace(Regex(":\\s*\\d+\\s*"), ": ")
+                            
+                            // Check if task already exists
+                            val existingTask = job.value!!.agendaItems.find {
+                                it.title.equals(taskTitle, ignoreCase = true) &&
+                                it.status != AgendaStatus.ARCHIVED
+                            }
+                            
+                            if (existingTask == null) {
+                                val newAgendaItem = AgendaItem(
+                                    jobId = jobId,
+                                    title = taskTitle,
+                                    description = "Sugerido por el asistente",
+                                    status = AgendaStatus.PENDING
+                                )
+                                storageManager.addAgendaItemToJob(jobId, newAgendaItem)
+                                job.value = storageManager.loadJob(jobId)
+                            }
                         }
                     )
                 }
@@ -324,10 +381,14 @@ private fun AgendaSection(
 ) {
     val showAddForm = remember { mutableStateOf(false) }
     val showDatePicker = remember { mutableStateOf(false) }
+    val showArchivedItems = remember { mutableStateOf(false) }
     val newTitle = remember { mutableStateOf("") }
     val newDescription = remember { mutableStateOf("") }
     val newDueText = remember { mutableStateOf("") }
     val newDueAt = remember { mutableStateOf<Long?>(null) }
+    val newReminderEnabled = remember { mutableStateOf(false) }
+    val newReminderOffsetDays = remember { mutableStateOf(0) }
+    val context = LocalContext.current
 
     if (showDatePicker.value) {
         DatePickerDialog(
@@ -357,7 +418,7 @@ private fun AgendaSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Agenda (${job.agendaItems.size})",
+                    "Agenda (${job.agendaItems.filter { it.status != AgendaStatus.ARCHIVED }.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -407,22 +468,39 @@ private fun AgendaSection(
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+                // Reminder section
+                ReminderDropdown(
+                    reminderEnabled = newReminderEnabled.value,
+                    reminderOffsetDays = newReminderOffsetDays.value,
+                    onReminderEnabledChange = { newReminderEnabled.value = it },
+                    onReminderOffsetChange = { newReminderOffsetDays.value = it }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = {
                         if (newTitle.value.isNotBlank()) {
-                            val agendaItem = AgendaItem(
+                            var agendaItem = AgendaItem(
                                 jobId = jobId,
                                 title = newTitle.value,
                                 description = newDescription.value,
                                 dueText = newDueText.value,
                                 dueAt = newDueAt.value,
-                                status = AgendaStatus.PENDING
+                                status = AgendaStatus.PENDING,
+                                reminderEnabled = newReminderEnabled.value,
+                                reminderOffsetDays = newReminderOffsetDays.value
                             )
+                            // Schedule reminder if enabled
+                            if (newReminderEnabled.value && newDueAt.value != null) {
+                                val scheduler = AgendaNotificationScheduler(context)
+                                agendaItem = scheduler.scheduleReminder(agendaItem)
+                            }
                             storageManager.addAgendaItemToJob(jobId, agendaItem)
                             newTitle.value = ""
                             newDescription.value = ""
                             newDueText.value = ""
                             newDueAt.value = null
+                            newReminderEnabled.value = false
+                            newReminderOffsetDays.value = 0
                             showAddForm.value = false
                             onAgendaUpdated()
                         }
@@ -435,9 +513,10 @@ private fun AgendaSection(
 
             if (job.agendaItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                // Separate pending and done items
+                // Separate pending, done, and archived items
                 val pendingItems = job.agendaItems.filter { it.status == AgendaStatus.PENDING }
                 val doneItems = job.agendaItems.filter { it.status == AgendaStatus.DONE }
+                val archivedItems = job.agendaItems.filter { it.status == AgendaStatus.ARCHIVED }
 
                 // Show pending items first
                 if (pendingItems.isNotEmpty()) {
@@ -476,6 +555,28 @@ private fun AgendaSection(
                         )
                     }
                 }
+
+                // Show archived items in collapsible section
+                if (archivedItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { showArchivedItems.value = !showArchivedItems.value },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("${if (showArchivedItems.value) "▼" else "▶"} Tareas Archivadas (${archivedItems.size})")
+                    }
+                    if (showArchivedItems.value) {
+                        archivedItems.forEach { item ->
+                            AgendaItemCard(
+                                item = item,
+                                jobId = jobId,
+                                storageManager = storageManager,
+                                onStatusChanged = { onAgendaUpdated() },
+                                onDelete = { onAgendaUpdated() }
+                            )
+                        }
+                    }
+                }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -489,7 +590,7 @@ private fun AgendaSection(
 }
 
 /**
- * Displays a single agenda item with status toggle and delete button.
+ * Displays a single agenda item with status toggle, edit button, and delete button.
  */
 @Composable
 private fun AgendaItemCard(
@@ -500,6 +601,22 @@ private fun AgendaItemCard(
     onDelete: () -> Unit
 ) {
     val showDeleteConfirm = remember { mutableStateOf(false) }
+    val showArchiveConfirm = remember { mutableStateOf(false) }
+    val showEditDialog = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    if (showEditDialog.value) {
+        EditAgendaDialog(
+            item = item,
+            onSave = { updatedItem ->
+                val scheduler = AgendaNotificationScheduler(context)
+                storageManager.updateAgendaItem(jobId, updatedItem, scheduler)
+                showEditDialog.value = false
+                onStatusChanged()
+            },
+            onDismiss = { showEditDialog.value = false }
+        )
+    }
 
     if (showDeleteConfirm.value) {
         AlertDialog(
@@ -519,6 +636,30 @@ private fun AgendaItemCard(
             },
             dismissButton = {
                 Button(onClick = { showDeleteConfirm.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showArchiveConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm.value = false },
+            title = { Text("Archivar Elemento") },
+            text = { Text("¿Deseas archivar este elemento de agenda completado?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        storageManager.archiveAgendaItem(jobId, item.id)
+                        showArchiveConfirm.value = false
+                        onStatusChanged()
+                    }
+                ) {
+                    Text("Archivar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showArchiveConfirm.value = false }) {
                     Text("Cancelar")
                 }
             }
@@ -555,17 +696,60 @@ private fun AgendaItemCard(
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
+                    // Display reminder information if enabled
+                    if (item.reminderEnabled) {
+                        Text(
+                            text = "🔔 Recordatorio: " + when (item.reminderOffsetDays) {
+                                0 -> "El día del vencimiento"
+                                1 -> "1 día antes"
+                                2 -> "2 días antes"
+                                3 -> "3 días antes"
+                                7 -> "1 semana antes"
+                                else -> "${item.reminderOffsetDays} días antes"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 Row {
-                    Button(
-                        onClick = {
-                            val newStatus = if (item.status == AgendaStatus.PENDING) "DONE" else "PENDING"
-                            storageManager.updateAgendaItemStatus(jobId, item.id, newStatus)
-                            onStatusChanged()
-                        },
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Text(if (item.status == AgendaStatus.PENDING) "Completar" else "Reabrir")
+                    // Show different buttons based on status
+                    if (item.status == AgendaStatus.PENDING) {
+                        Button(
+                            onClick = {
+                                storageManager.updateAgendaItemStatus(jobId, item.id, "DONE")
+                                onStatusChanged()
+                            },
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Text("Completar")
+                        }
+                    } else if (item.status == AgendaStatus.DONE) {
+                        Button(
+                            onClick = { showArchiveConfirm.value = true },
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Text("Archivar")
+                        }
+                    } else if (item.status == AgendaStatus.ARCHIVED) {
+                        Button(
+                            onClick = {
+                                storageManager.updateAgendaItemStatus(jobId, item.id, "DONE")
+                                onStatusChanged()
+                            },
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Text("Restaurar")
+                        }
+                    }
+                    // Edit button (enabled for PENDING and DONE, disabled for ARCHIVED)
+                    if (item.status != AgendaStatus.ARCHIVED) {
+                        IconButton(
+                            onClick = { showEditDialog.value = true },
+                            modifier = Modifier.padding(0.dp)
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Editar elemento de agenda")
+                        }
                     }
                     IconButton(
                         onClick = { showDeleteConfirm.value = true },
@@ -1046,6 +1230,90 @@ private fun PdfReportSection(
                 enabled = !isGenerating
             ) {
                 Text(if (isGenerating) "Generando..." else "Generar Reporte PDF")
+            }
+        }
+    }
+}
+
+/**
+ * Reminder dropdown selector for agenda items.
+ * Allows users to enable/disable reminders and select offset days.
+ */
+@Composable
+fun ReminderDropdown(
+    reminderEnabled: Boolean,
+    reminderOffsetDays: Int,
+    onReminderEnabledChange: (Boolean) -> Unit,
+    onReminderOffsetChange: (Int) -> Unit
+) {
+    val showOffsetMenu = remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Enable/Disable reminder toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Recordatorio",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Button(
+                onClick = { onReminderEnabledChange(!reminderEnabled) },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text(if (reminderEnabled) "Habilitado" else "Deshabilitado")
+            }
+        }
+
+        // Offset days dropdown (only show if reminder is enabled)
+        if (reminderEnabled) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { showOffsetMenu.value = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        when (reminderOffsetDays) {
+                            0 -> "El Día del Vencimiento"
+                            1 -> "1 Día Antes"
+                            2 -> "2 Días Antes"
+                            3 -> "3 Días Antes"
+                            7 -> "1 Semana Antes"
+                            else -> "$reminderOffsetDays Días Antes"
+                        }
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showOffsetMenu.value,
+                    onDismissRequest = { showOffsetMenu.value = false }
+                ) {
+                    listOf(0, 1, 2, 3, 7).forEach { days ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (days) {
+                                        0 -> "El Día del Vencimiento"
+                                        1 -> "1 Día Antes"
+                                        2 -> "2 Días Antes"
+                                        3 -> "3 Días Antes"
+                                        7 -> "1 Semana Antes"
+                                        else -> "$days Días Antes"
+                                    }
+                                )
+                            },
+                            onClick = {
+                                onReminderOffsetChange(days)
+                                showOffsetMenu.value = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }

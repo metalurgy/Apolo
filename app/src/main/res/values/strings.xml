@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bitacora Pro</string>
-    <string name="app_version">v0.5.1</string>
+    <string name="app_version">v0.6</string>
     <string name="home_title">Bitacora Pro</string>
     <string name="create_new_job">Create New Job</string>
     <string name="no_jobs">No jobs yet</string>
@@ -21,4 +21,31 @@
     <string name="category">Category</string>
     <string name="delete">Delete</string>
     <string name="back">Back</string>
+
+    <!-- Reminder notification strings -->
+    <string name="reminder_label">Recordatorio</string>
+    <string name="reminder_enabled">Recordatorio Habilitado</string>
+    <string name="reminder_disabled">Sin Recordatorio</string>
+    <string name="reminder_offset_days">Días Antes</string>
+    <string name="reminder_offset_0">El Día del Vencimiento</string>
+    <string name="reminder_offset_1">1 Día Antes</string>
+    <string name="reminder_offset_2">2 Días Antes</string>
+    <string name="reminder_offset_3">3 Días Antes</string>
+    <string name="reminder_offset_7">1 Semana Antes</string>
+    <string name="reminder_notification_title">Recordatorio de Agenda</string>
+    <string name="reminder_notification_text">Tienes un elemento de agenda pendiente</string>
+
+    <!-- Edit agenda item strings -->
+    <string name="edit_agenda_title">Editar Elemento de Agenda</string>
+    <string name="edit_agenda_save">Guardar</string>
+    <string name="edit_agenda_cancel">Cancelar</string>
+    <string name="edit_agenda_title_label">Título</string>
+    <string name="edit_agenda_description_label">Descripción</string>
+    <string name="edit_agenda_due_date_label">Fecha de Vencimiento</string>
+    <string name="edit_agenda_due_text_label">Texto de fecha</string>
+    <string name="edit_agenda_validation_title_empty">El título no puede estar vacío</string>
+    <string name="edit_agenda_validation_reminder_needs_date">Se requiere una fecha de vencimiento para programar recordatorio</string>
+    <string name="edit_agenda_done_note">Nota: Los recordatorios no se programan para tareas completadas</string>
+    <string name="edit_agenda_archived_note">Nota: Las tareas archivadas no pueden ser editadas</string>
+    <string name="edit_agenda_status_label">Estado:</string>
 </resources>

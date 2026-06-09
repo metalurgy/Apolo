@@ -1,7 +1,10 @@
 package com.bitacora.pro
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -52,6 +55,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         storageManager = StorageManager(this)
+
+        // Create notification channel for agenda reminders
+        createNotificationChannel()
 
         // Extract shared content from intent BEFORE setContent
         val extractedContent = extractSharedContentFromIntent(intent)
@@ -272,5 +278,27 @@ class MainActivity : ComponentActivity() {
             Log.d("MainActivity", "onNewIntent: Updating pendingSharedContent - files: ${extractedContent.sharedFiles.size}, text length: ${extractedContent.textContent.length}")
         }
         pendingSharedContent.value = extractedContent
+    }
+
+    /**
+     * Creates the notification channel for agenda reminders.
+     * Required for Android 8.0 (API 26) and above.
+     */
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "agenda_reminders"
+            val channelName = "Recordatorios de Agenda"
+            val channelDescription = "Notificaciones de recordatorio para elementos de agenda"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = channelDescription
+                enableVibration(true)
+                enableLights(true)
+            }
+
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 }

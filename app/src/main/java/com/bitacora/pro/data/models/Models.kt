@@ -42,7 +42,8 @@ enum class EvidenceCategory {
 enum class AgendaStatus {
     PENDING,
     DONE,
-    CANCELLED
+    CANCELLED,
+    ARCHIVED
 }
 
 /**
@@ -106,7 +107,12 @@ data class AgendaItem(
     val status: AgendaStatus = AgendaStatus.PENDING,
     val sourceEvidenceId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    // Reminder notification fields
+    val reminderEnabled: Boolean = false,
+    val reminderOffsetDays: Int = 0,
+    val reminderScheduledAt: Long? = null,
+    val notificationId: Int = 0
 ) : Serializable
 
 /**
@@ -170,4 +176,5 @@ fun AgendaStatus.getSpanishLabel(): String = when (this) {
     AgendaStatus.PENDING -> "Pendiente"
     AgendaStatus.DONE -> "Completado"
     AgendaStatus.CANCELLED -> "Cancelado"
+    AgendaStatus.ARCHIVED -> "Archivado"
 }

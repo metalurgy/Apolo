@@ -133,7 +133,7 @@ fun WelcomeScreen(
 
             // Version info
             Text(
-                "v0.5.1",
+                "v0.6",
                 fontSize = 12.sp,
                 color = Color(0xFFB2EBE7),
                 textAlign = TextAlign.Center
