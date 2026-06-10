@@ -6,6 +6,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Permission for contact import (v0.7.2) - READ_CONTACTS only, no WRITE -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Permission for camera capture (v0.8.2) - required for "Tomar foto" button -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- NO internet permission - all processing is local -->
+    <!-- NO accessibility service permission - no background access -->
+    <!-- NO notification listener permission - no background monitoring -->
+    <!-- NO WhatsApp database access - user-initiated imports only -->
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -56,6 +67,13 @@
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <!-- WhatsApp export text files (v0.7.2) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
 
         </activity>

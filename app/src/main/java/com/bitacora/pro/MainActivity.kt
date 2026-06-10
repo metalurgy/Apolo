@@ -20,8 +20,12 @@ import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.SharedFileDescriptor
 import com.bitacora.pro.data.storage.StorageManager
 import com.bitacora.pro.ui.navigation.NavRoutes
+import com.bitacora.pro.data.storage.InboxManager
+import com.bitacora.pro.ui.screens.AssistantScreen
 import com.bitacora.pro.ui.screens.CreateJobScreen
+import com.bitacora.pro.ui.screens.DailyAgendaScreen
 import com.bitacora.pro.ui.screens.HomeScreen
+import com.bitacora.pro.ui.screens.InboxScreen
 import com.bitacora.pro.ui.screens.JobDetailScreen
 import com.bitacora.pro.ui.screens.ShareIntakeScreen
 import com.bitacora.pro.ui.screens.SharedContent
@@ -49,12 +53,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var storageManager: StorageManager
+    private lateinit var inboxManager: InboxManager
     private val pendingSharedContent = mutableStateOf<SharedContent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         storageManager = StorageManager(this)
+        inboxManager = InboxManager(this)
 
         // Create notification channel for agenda reminders
         createNotificationChannel()
@@ -91,6 +97,18 @@ class MainActivity : ComponentActivity() {
                             },
                             onJobClick = { jobId ->
                                 navController.navigate(NavRoutes.jobDetailRoute(jobId))
+                            },
+                            onCaptureClick = {
+                                navController.navigate(NavRoutes.CREATE_JOB)
+                            },
+                            onInboxClick = {
+                                navController.navigate(NavRoutes.INBOX)
+                            },
+                            onAgendaClick = {
+                                navController.navigate(NavRoutes.DAILY_AGENDA)
+                            },
+                            onAssistantClick = {
+                                navController.navigate(NavRoutes.ASSISTANT)
                             }
                         )
                     }
@@ -144,6 +162,64 @@ class MainActivity : ComponentActivity() {
                             storageManager = storageManager,
                             onBack = {
                                 navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable(NavRoutes.INBOX) {
+                        InboxScreen(
+                            inboxManager = inboxManager,
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onAssignToJob = { inboxItem ->
+                                // Navigate to job detail or create job with inbox item
+                                navController.navigate(NavRoutes.CREATE_JOB)
+                            }
+                        )
+                    }
+
+                    composable(NavRoutes.DAILY_AGENDA) {
+                        DailyAgendaScreen(
+                            storageManager = storageManager,
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onAddAgendaItem = {
+                                // Navigate to create job or job detail to add agenda item
+                                navController.navigate(NavRoutes.HOME)
+                            }
+                        )
+                    }
+
+                    composable(NavRoutes.ASSISTANT) {
+                        AssistantScreen(
+                            onBack = {
+                                navController.popBackStack()
+                            },
+                            onReviewMissing = {
+                                // Real workflow: Navigate to Pendientes to review overdue/missing items
+                                navController.navigate(NavRoutes.DAILY_AGENDA) {
+                                    popUpTo(NavRoutes.ASSISTANT) { inclusive = true }
+                                }
+                            },
+                            onCaptureEvidence = {
+                                // Real workflow: Navigate to CreateJob for quick evidence capture
+                                navController.navigate(NavRoutes.CREATE_JOB) {
+                                    popUpTo(NavRoutes.ASSISTANT) { inclusive = true }
+                                }
+                            },
+                            onPrepareReport = {
+                                // Real workflow: Navigate to Home to select job for report generation
+                                navController.navigate(NavRoutes.HOME) {
+                                    popUpTo(NavRoutes.ASSISTANT) { inclusive = true }
+                                }
+                            },
+                            onCloseActivity = {
+                                // Real workflow: Navigate to Home to mark jobs as completed
+                                navController.navigate(NavRoutes.HOME) {
+                                    popUpTo(NavRoutes.ASSISTANT) { inclusive = true }
+                                }
                             }
                         )
                     }

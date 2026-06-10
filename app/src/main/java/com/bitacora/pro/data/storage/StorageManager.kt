@@ -6,6 +6,7 @@ import com.bitacora.pro.data.models.AgendaItem
 import com.bitacora.pro.data.models.EvidenceItem
 import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
+import com.bitacora.pro.data.models.JobStatus
 import com.bitacora.pro.notifications.AgendaNotificationScheduler
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -38,7 +39,12 @@ class StorageManager(private val context: Context) {
 
     /**
      * Loads a job by its ID with safe backward compatibility.
-     * Handles old job.json files that may be missing agendaItems, lastUsedAt, or evidence fields.
+     * Handles old job.json files that may be missing:
+     * - agendaItems (v0.6 and earlier)
+     * - lastUsedAt (v0.6 and earlier)
+     * - evidence (v0.6 and earlier)
+     * - reportNotes (v0.6 and earlier)
+     * - status (v0.7 and earlier - defaults to ACTIVE)
      */
     fun loadJob(jobId: String): JobFile? {
         return try {
@@ -71,6 +77,17 @@ class StorageManager(private val context: Context) {
             // Ensure evidence field exists (for backward compatibility)
             if (!jsonObject.has("evidence") || jsonObject.get("evidence").isJsonNull) {
                 jsonObject.add("evidence", JsonArray())
+            }
+
+            // Ensure reportNotes field exists (for backward compatibility with v0.6 and earlier)
+            if (!jsonObject.has("reportNotes") || jsonObject.get("reportNotes").isJsonNull) {
+                jsonObject.addProperty("reportNotes", "")
+            }
+
+            // Ensure status field exists (for backward compatibility with v0.7 and earlier)
+            // Default to ACTIVE for old jobs
+            if (!jsonObject.has("status") || jsonObject.get("status").isJsonNull) {
+                jsonObject.addProperty("status", JobStatus.ACTIVE.name)
             }
 
             // Deserialize the corrected JSON object
@@ -522,6 +539,105 @@ class StorageManager(private val context: Context) {
     }
 
     /**
+     * Creates a temporary camera file for capturing photos.
+     * Returns the file URI for use with ActivityResultContracts.TakePicture().
+     * The file is created in the cache directory and will be moved to evidence folder after capture.
+     *
+     * @return Pair of (File, Uri) for the temporary camera file
+     */
+    fun createTemporaryCameraFile(): Pair<File, Uri> {
+        val cameraDir = File(context.cacheDir, "camera").apply { mkdirs() }
+        val timeStamp = System.currentTimeMillis()
+        val imageFile = File(cameraDir, "IMG_$timeStamp.jpg")
+        
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+        
+        return Pair(imageFile, uri)
+    }
+
+    /**
+     * Saves a camera-captured photo as evidence.
+     * Moves the temporary file from cache to the job's evidence folder.
+     * Returns the EvidenceItem if successful, null if the move fails.
+     *
+     * @param jobId The ID of the job to save the photo to
+     * @param tempFile The temporary file created by the camera
+     * @return EvidenceItem if successful, null if move fails
+     */
+    fun saveCameraPhotoAsEvidence(jobId: String, tempFile: File): EvidenceItem? {
+        return try {
+            if (!tempFile.exists()) {
+                return null
+            }
+
+            val jobDir = File(jobsDir, jobId)
+            val evidenceDir = File(jobDir, "evidence").apply { mkdirs() }
+
+            val evidenceId = java.util.UUID.randomUUID().toString()
+            val fileName = "$evidenceId.jpg"
+            val targetFile = File(evidenceDir, fileName)
+
+            // Move the temporary file to the evidence folder
+            if (tempFile.renameTo(targetFile)) {
+                // Create and return EvidenceItem
+                EvidenceItem(
+                    id = evidenceId,
+                    type = EvidenceType.IMAGE,
+                    fileName = fileName,
+                    mimeType = "image/jpeg",
+                    createdAt = System.currentTimeMillis()
+                )
+            } else {
+                // If rename fails, try copying instead
+                tempFile.inputStream().use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                // Verify the copy was successful
+                if (targetFile.exists() && targetFile.length() > 0) {
+                    tempFile.delete() // Clean up temp file
+                    EvidenceItem(
+                        id = evidenceId,
+                        type = EvidenceType.IMAGE,
+                        fileName = fileName,
+                        mimeType = "image/jpeg",
+                        createdAt = System.currentTimeMillis()
+                    )
+                } else {
+                    targetFile.delete()
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Cleans up temporary camera files from the cache directory.
+     * Called when the user cancels the camera capture.
+     */
+    fun cleanupTemporaryCameraFiles() {
+        try {
+            val cameraDir = File(context.cacheDir, "camera")
+            if (cameraDir.exists() && cameraDir.isDirectory) {
+                cameraDir.listFiles()?.forEach { file ->
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
      * Gets the reports directory for a job.
      * Creates it if it doesn't exist.
      */
@@ -541,21 +657,153 @@ class StorageManager(private val context: Context) {
      * Gets the URI for a report file using FileProvider.
      * This is used to safely share reports with other apps.
      */
-    fun getReportFileUri(jobId: String, fileName: String): Uri? {
-        return try {
-            val file = getReportFile(jobId, fileName)
-            if (file.exists()) {
-                androidx.core.content.FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
-                )
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-}
+     fun getReportFileUri(jobId: String, fileName: String): Uri? {
+         return try {
+             val file = getReportFile(jobId, fileName)
+             if (file.exists()) {
+                 androidx.core.content.FileProvider.getUriForFile(
+                     context,
+                     "${context.packageName}.fileprovider",
+                     file
+                 )
+             } else {
+                 null
+             }
+         } catch (e: Exception) {
+             e.printStackTrace()
+             null
+         }
+     }
+
+     /**
+      * Updates the status of a job.
+      * Also updates job.updatedAt to current time.
+      * Cancels all reminder notifications when job is archived.
+      */
+     fun updateJobStatus(jobId: String, newStatus: JobStatus) {
+         try {
+             val job = loadJob(jobId) ?: return
+             val now = System.currentTimeMillis()
+             val scheduler = AgendaNotificationScheduler(context)
+             
+             // If archiving the job, cancel all reminders
+             if (newStatus == JobStatus.ARCHIVED) {
+                 job.agendaItems.forEach { item ->
+                     if (item.notificationId != 0) {
+                         scheduler.cancelReminder(item)
+                     }
+                 }
+             }
+             
+             val updatedJob = job.copy(
+                 status = newStatus,
+                 updatedAt = now,
+                 lastUsedAt = now
+             )
+             saveJobMetadata(updatedJob)
+         } catch (e: Exception) {
+             e.printStackTrace()
+         }
+     }
+
+     /**
+      * Archives an entire job and all its reminders.
+      * This is a convenience method that calls updateJobStatus with ARCHIVED.
+      */
+     fun archiveJob(jobId: String) {
+         updateJobStatus(jobId, JobStatus.ARCHIVED)
+     }
+
+     /**
+      * Marks a job as completed.
+      * This is a convenience method that calls updateJobStatus with COMPLETED.
+      */
+     fun completeJob(jobId: String) {
+         updateJobStatus(jobId, JobStatus.COMPLETED)
+     }
+
+     /**
+      * Reactivates a job (sets status back to ACTIVE).
+      * This is a convenience method that calls updateJobStatus with ACTIVE.
+      */
+     fun reactivateJob(jobId: String) {
+         updateJobStatus(jobId, JobStatus.ACTIVE)
+     }
+
+     /**
+      * Saves WhatsApp chat export as text evidence (v0.7.2).
+      * Parses the export and creates a TEXT evidence item.
+      */
+     fun saveWhatsAppExportAsEvidence(
+         jobId: String,
+         exportText: String,
+         senderName: String = "WhatsApp Chat"
+     ): EvidenceItem? {
+         return try {
+             val evidence = EvidenceItem(
+                 type = EvidenceType.TEXT,
+                 fileName = "whatsapp_export.txt",
+                 textContent = exportText,
+                 mimeType = "text/plain",
+                 notes = "Importado desde WhatsApp - $senderName"
+             )
+             addEvidenceToJob(jobId, evidence)
+             evidence
+         } catch (e: Exception) {
+             e.printStackTrace()
+             null
+         }
+     }
+
+     /**
+      * Extracts phone numbers from WhatsApp export and updates job metadata.
+      * Useful for auto-filling contact information (v0.7.2).
+      */
+     fun extractPhoneNumbersFromWhatsAppExport(
+         jobId: String,
+         exportText: String
+     ): List<String> {
+         return try {
+             val phonePattern = Regex(
+                 "(?:\\+?\\d{1,3})?[\\s.-]?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4,6}|\\d{10,15}"
+             )
+             phonePattern.findAll(exportText)
+                 .map { it.value }
+                 .distinct()
+                 .toList()
+         } catch (e: Exception) {
+             e.printStackTrace()
+             emptyList()
+         }
+     }
+
+     /**
+      * Creates a summary of WhatsApp export for display.
+      * Returns a formatted string with message count, participants, etc.
+      */
+     fun getWhatsAppExportSummary(exportText: String): String {
+         return try {
+             val lines = exportText.split("\n").filter { it.isNotBlank() }
+             val messagePattern = Regex("^\\[.*?\\]\\s+(.+?):\\s")
+             val senders = mutableSetOf<String>()
+             
+             lines.forEach { line ->
+                 val match = messagePattern.find(line)
+                 if (match != null) {
+                     senders.add(match.groupValues[1])
+                 }
+             }
+
+             buildString {
+                 append("Mensajes: ${lines.size}\n")
+                 append("Participantes: ${senders.size}\n")
+                 if (senders.isNotEmpty()) {
+                     append("Contactos: ${senders.joinToString(", ")}")
+                 }
+             }
+         } catch (e: Exception) {
+             e.printStackTrace()
+             "Error al procesar el chat"
+         }
+     }
+ }

@@ -30,7 +30,8 @@ import kotlinx.coroutines.delay
 
 /**
  * Professional welcome/splash screen for Bitacora Pro.
- * Displays app branding and key features before navigating to home.
+ * Displays app branding, key features, and privacy messaging before navigating to home.
+ * v0.8.0: Added privacy and data handling information
  */
 @Composable
 fun WelcomeScreen(
@@ -78,6 +79,13 @@ fun WelcomeScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
+                        "Daily Copilot",
+                        fontSize = 14.sp,
+                        color = Color(0xFFB2EBE7),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
                         "Gestión Profesional de Trabajos",
                         fontSize = 18.sp,
                         color = Color(0xFFB2EBE7),
@@ -103,11 +111,44 @@ fun WelcomeScreen(
                     Spacer(modifier = Modifier.height(20.dp))
                     FeatureItem("📅", "Agenda tareas", "Seguimiento de pendientes y vencimientos")
                     Spacer(modifier = Modifier.height(20.dp))
-                    FeatureItem("📄", "Genera reportes", "Reportes PDF profesionales")
+                    FeatureItem("🔒", "Privacidad garantizada", "Todos tus datos se guardan localmente")
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Privacy Notice
+            AnimatedVisibility(
+                visible = showContent.value,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it })
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = Color(0xFF00695C),
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .padding(12.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        "🔐 Privacidad y Datos",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Todos tus datos se guardan localmente en tu dispositivo. No hay sincronización en la nube ni envío de datos a servidores externos.",
+                        fontSize = 11.sp,
+                        color = Color(0xFFB2EBE7),
+                        lineHeight = 14.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Continue Button
             AnimatedVisibility(
@@ -133,7 +174,7 @@ fun WelcomeScreen(
 
             // Version info
             Text(
-                "v0.6",
+                "v0.8.0 - Daily Copilot",
                 fontSize = 12.sp,
                 color = Color(0xFFB2EBE7),
                 textAlign = TextAlign.Center

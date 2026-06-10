@@ -113,7 +113,7 @@ fun ShareIntakeScreen(
                                 .fillMaxWidth()
                                 .height(48.dp)
                         ) {
-                            Text("Agregar al Trabajo Reciente")
+                            Text("Agregar a la Actividad Reciente")
                         }
                     }
                 }
@@ -122,7 +122,7 @@ fun ShareIntakeScreen(
                 if (jobs.value.isNotEmpty()) {
                     item {
                         Text(
-                            "O selecciona otro trabajo:",
+                            "O selecciona otra actividad:",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -188,30 +188,58 @@ private fun SharedContentSummary(sharedContent: SharedContent) {
                 .padding(16.dp)
         ) {
             Text(
-                "Contenido Recibido:",
+                "📥 Contenido Recibido:",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Determine content type for better UX
+            val isWhatsAppExport = sharedContent.textContent.contains(Regex("\\d{1,2}/\\d{1,2}/\\d{2,4}.*\\d{1,2}:\\d{2}"))
+            
+            if (isWhatsAppExport) {
+                Text(
+                    "💬 Exportación de WhatsApp detectada",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             if (sharedContent.textContent.isNotEmpty()) {
                 Text(
-                    "Texto: ${sharedContent.textContent.take(100)}${if (sharedContent.textContent.length > 100) "..." else ""}",
-                    style = MaterialTheme.typography.bodySmall
+                    "📄 Texto (${sharedContent.textContent.length} caracteres):",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    sharedContent.textContent.take(150) + if (sharedContent.textContent.length > 150) "..." else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             if (sharedContent.sharedFiles.isNotEmpty()) {
                 Text(
-                    "Archivos: ${sharedContent.sharedFiles.size}",
-                    style = MaterialTheme.typography.bodySmall
+                    "📎 Archivos (${sharedContent.sharedFiles.size}):",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
                 sharedContent.sharedFiles.forEach { fileDescriptor ->
                     val fileName = getFileNameFromUri(fileDescriptor.uri)
+                    val fileType = when {
+                        fileDescriptor.mimeType.startsWith("image/") -> "🖼️"
+                        fileDescriptor.mimeType.startsWith("audio/") -> "🎵"
+                        fileDescriptor.mimeType.startsWith("video/") -> "🎬"
+                        fileDescriptor.mimeType.contains("pdf") -> "📕"
+                        else -> "📄"
+                    }
                     Text(
-                        "  • $fileName (${fileDescriptor.mimeType})",
-                        style = MaterialTheme.typography.labelSmall
+                        "$fileType $fileName",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                     )
                 }
             }

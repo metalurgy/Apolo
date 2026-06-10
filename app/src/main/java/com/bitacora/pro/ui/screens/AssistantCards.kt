@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,114 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bitacora.pro.assistant.AssistantResult
-
-/**
- * Displays the job assistant analysis section with results.
- */
-@Composable
-fun AssistantSection(
-    isAnalyzing: Boolean,
-    result: AssistantResult?,
-    errorMessage: String = "",
-    onAnalyze: () -> Unit,
-    onAddTaskFromAction: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                "Asistente de Trabajo",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Show error message if analysis failed
-            if (errorMessage.isNotEmpty()) {
-                Text(
-                    errorMessage,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-
-            // Show loading state
-            if (isAnalyzing) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .padding(end = 8.dp)
-                    )
-                    Text(
-                        "Analizando trabajo...",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            // Show results if available
-            if (result != null && !isAnalyzing) {
-                // Summary card
-                SummaryCard(result.summary)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Pending tasks card
-                if (result.pendingTasks.isNotEmpty()) {
-                    PendingTasksCard(result.pendingTasks)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Risks card
-                if (result.risks.isNotEmpty()) {
-                    RisksCard(result.risks)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Suggested notes card
-                if (result.suggestedNotes.isNotEmpty()) {
-                    SuggestedNotesCard(result.suggestedNotes)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Next actions card
-                if (result.nextActions.isNotEmpty()) {
-                    NextActionsCard(
-                        result.nextActions,
-                        onAddTask = onAddTaskFromAction
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-
-            // Analyze button
-            Button(
-                onClick = onAnalyze,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                enabled = !isAnalyzing
-            ) {
-                Text(if (isAnalyzing) "Analizando..." else "Analizar Trabajo")
-            }
-        }
-    }
-}
 
 /**
  * Displays job summary information.
@@ -266,7 +157,8 @@ private fun SuggestedNotesCard(suggestedNotes: List<String>) {
 }
 
 /**
- * Displays next actions with buttons to add tasks.
+ * Displays next actions with 4 clear action buttons.
+ * Improved UI with better button organization and visual hierarchy.
  */
 @Composable
 private fun NextActionsCard(
@@ -289,34 +181,95 @@ private fun NextActionsCard(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Display actions with improved button layout
             nextActions.forEach { action ->
-                Row(
+                ActionItemRow(
+                    action = action,
+                    onAddTask = onAddTask
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Displays a single action item with appropriate button.
+ * Shows 4 clear action buttons based on action type.
+ */
+@Composable
+private fun ActionItemRow(
+    action: String,
+    onAddTask: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            action,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
+
+        // Show appropriate button based on action type
+        when {
+            action.contains("URGENTE") || action.contains("vencidas") -> {
+                Button(
+                    onClick = { onAddTask(action) },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(start = 8.dp)
+                        .height(32.dp)
                 ) {
-                    Text(
-                        action,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Only show "Agregar" button for task-related actions, not for archive/report actions
-                    if (!action.contains("Archivar") && !action.contains("Generar reporte")) {
-                        Button(
-                            onClick = { onAddTask(action) },
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .height(32.dp)
-                        ) {
-                            Text(
-                                "Agregar",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
+                    Text("Revisar", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            action.contains("tareas pendientes") -> {
+                Button(
+                    onClick = { onAddTask(action) },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .height(32.dp)
+                ) {
+                    Text("Revisar", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            action.contains("evidencia") -> {
+                Button(
+                    onClick = { onAddTask(action) },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .height(32.dp)
+                ) {
+                    Text("Agregar", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            action.contains("información") -> {
+                Button(
+                    onClick = { onAddTask(action) },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .height(32.dp)
+                ) {
+                    Text("Completar", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            action.contains("Generar reporte") -> {
+                // No button for report generation - user should use PDF Report section
+            }
+            else -> {
+                Button(
+                    onClick = { onAddTask(action) },
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .height(32.dp)
+                ) {
+                    Text("Agregar", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

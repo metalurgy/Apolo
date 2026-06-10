@@ -130,6 +130,7 @@ data class AgendaItem(
  * @param evidence List of evidence items associated with the job.
  * @param agendaItems List of agenda items (tasks/reminders) for the job.
  * @param notes Optional notes about the job.
+ * @param reportNotes Optional notes specifically for the PDF report (v0.7+).
  */
 data class JobFile(
     val id: String = UUID.randomUUID().toString(),
@@ -143,7 +144,8 @@ data class JobFile(
     val lastUsedAt: Long = System.currentTimeMillis(),
     val evidence: List<EvidenceItem> = emptyList(),
     val agendaItems: List<AgendaItem> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    val reportNotes: String = ""
 ) : Serializable
 
 /**
@@ -177,4 +179,13 @@ fun AgendaStatus.getSpanishLabel(): String = when (this) {
     AgendaStatus.DONE -> "Completado"
     AgendaStatus.CANCELLED -> "Cancelado"
     AgendaStatus.ARCHIVED -> "Archivado"
+}
+
+/**
+ * Helper function to get Spanish label for JobStatus.
+ */
+fun JobStatus.getSpanishLabel(): String = when (this) {
+    JobStatus.ACTIVE -> "Activo"
+    JobStatus.COMPLETED -> "Completado"
+    JobStatus.ARCHIVED -> "Archivado"
 }

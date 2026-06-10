@@ -65,10 +65,12 @@ import com.bitacora.pro.data.models.EvidenceCategory
 import com.bitacora.pro.data.models.EvidenceItem
 import com.bitacora.pro.data.models.EvidenceType
 import com.bitacora.pro.data.models.JobFile
+import com.bitacora.pro.data.models.JobStatus
 import com.bitacora.pro.data.models.getSpanishLabel
 import com.bitacora.pro.data.storage.StorageManager
 import com.bitacora.pro.notifications.AgendaNotificationScheduler
 import com.bitacora.pro.reports.JobPdfReportGenerator
+import com.bitacora.pro.whatsapp.WhatsAppUIHelper
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -92,20 +94,81 @@ fun JobDetailScreen(
     val assistantResult = remember { mutableStateOf<AssistantResult?>(null) }
     val isAnalyzingJob = remember { mutableStateOf(false) }
     val assistantErrorMessage = remember { mutableStateOf("") }
+    val showArchiveConfirm = remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val cameraErrorMessage = remember { mutableStateOf("") }
+    val pendingCameraFile = remember { mutableStateOf<File?>(null) }
+
+    // Camera capture launcher using ActivityResultContracts.TakePicture()
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraFile.value != null) {
+            // Photo was taken successfully - save it as evidence
+            val tempFile = pendingCameraFile.value!!
+            val evidence = storageManager.saveCameraPhotoAsEvidence(jobId, tempFile)
+            if (evidence != null) {
+                // Add evidence to job
+                storageManager.addEvidenceToJob(jobId, evidence)
+                // Reload job to show new evidence
+                job.value = storageManager.loadJob(jobId)
+                cameraErrorMessage.value = "" // Clear any previous errors
+            } else {
+                cameraErrorMessage.value = "Error al guardar la foto"
+                storageManager.cleanupTemporaryCameraFiles()
+            }
+            pendingCameraFile.value = null
+        } else {
+            // User cancelled or camera failed
+            cameraErrorMessage.value = "Captura de foto cancelada"
+            storageManager.cleanupTemporaryCameraFiles()
+            pendingCameraFile.value = null
+        }
+    }
 
     // Load job on screen composition
     LaunchedEffect(jobId) {
         job.value = storageManager.loadJob(jobId)
     }
 
+    if (showArchiveConfirm.value && job.value != null) {
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm.value = false },
+            title = { Text("Archivar Actividad") },
+            text = { Text("¿Estás seguro de que deseas archivar esta actividad? Se cancelarán todos los recordatorios programados.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        storageManager.archiveJob(jobId)
+                        showArchiveConfirm.value = false
+                        onBack()
+                    }
+                ) {
+                    Text("Archivar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showArchiveConfirm.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detalles del Trabajo") },
+                title = { Text("Detalles de la Actividad") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                    }
+                },
+                actions = {
+                    if (job.value != null && job.value!!.status != JobStatus.ARCHIVED) {
+                        IconButton(onClick = { showArchiveConfirm.value = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Archivar actividad")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -126,6 +189,24 @@ fun JobDetailScreen(
                 // Job metadata section
                 item {
                     JobMetadataCard(job.value!!)
+                }
+
+                // Activity status explanation section
+                item {
+                    ActivityStatusExplanationCard(job.value!!.status)
+                }
+
+                // Report notes section
+                item {
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    ReportNotesSection(
+                        job = job.value!!,
+                        jobId = jobId,
+                        storageManager = storageManager,
+                        onReportNotesUpdated = {
+                            job.value = storageManager.loadJob(jobId)
+                        }
+                    )
                 }
 
                 // PDF Report section
@@ -202,10 +283,10 @@ fun JobDetailScreen(
                     )
                 }
 
-                // Assistant section
+                // Assistant section (v0.7.3 - compact action-based)
                 item {
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
-                    AssistantSection(
+                    com.bitacora.pro.ui.screens.AssistantSection(
                         isAnalyzing = isAnalyzingJob.value,
                         result = assistantResult.value,
                         errorMessage = assistantErrorMessage.value,
@@ -255,11 +336,71 @@ fun JobDetailScreen(
                 // Evidence section
                 if (job.value!!.evidence.isNotEmpty()) {
                     item {
-                        Text(
-                            "Evidencia (${job.value!!.evidence.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        val showEvidenceHelp = remember { mutableStateOf(false) }
+                        
+                        if (showEvidenceHelp.value) {
+                            AlertDialog(
+                                onDismissRequest = { showEvidenceHelp.value = false },
+                                title = { Text("Clasificación de Evidencia") },
+                                text = { Text(WhatsAppUIHelper.getEvidenceClassificationHelpText()) },
+                                confirmButton = {
+                                    Button(onClick = { showEvidenceHelp.value = false }) {
+                                        Text("Entendido")
+                                    }
+                                }
+                            )
+                        }
+
+                        // Show camera error message if any
+                        if (cameraErrorMessage.value.isNotEmpty()) {
+                            AlertDialog(
+                                onDismissRequest = { cameraErrorMessage.value = "" },
+                                title = { Text("Información") },
+                                text = { Text(cameraErrorMessage.value) },
+                                confirmButton = {
+                                    Button(onClick = { cameraErrorMessage.value = "" }) {
+                                        Text("Entendido")
+                                    }
+                                }
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Evidencia (${job.value!!.evidence.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Button(
+                                    onClick = { showEvidenceHelp.value = true },
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .padding(0.dp)
+                                ) {
+                                    Text("ℹ️ Categorías")
+                                }
+                                Button(
+                                    onClick = {
+                                        // Launch camera to capture photo
+                                        val (tempFile, uri) = storageManager.createTemporaryCameraFile()
+                                        pendingCameraFile.value = tempFile
+                                        takePictureLauncher.launch(uri)
+                                    },
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .padding(0.dp)
+                                ) {
+                                    Text("📸 Tomar foto")
+                                }
+                            }
+                        }
                     }
 
                     // Group evidence by category
@@ -294,11 +435,11 @@ fun JobDetailScreen(
                     }
                 } else {
                     item {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 32.dp),
-                            contentAlignment = Alignment.Center
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 "Sin evidencia aún",
@@ -306,6 +447,17 @@ fun JobDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    // Launch camera to capture photo
+                                    val (tempFile, uri) = storageManager.createTemporaryCameraFile()
+                                    pendingCameraFile.value = tempFile
+                                    takePictureLauncher.launch(uri)
+                                }
+                            ) {
+                                Text("📸 Tomar foto")
+                            }
                         }
                     }
                 }
@@ -319,6 +471,36 @@ fun JobDetailScreen(
  */
 @Composable
 private fun JobMetadataCard(job: JobFile) {
+    val context = LocalContext.current
+    val showWhatsAppHelp = remember { mutableStateOf(false) }
+    val whatsAppError = remember { mutableStateOf("") }
+
+    if (showWhatsAppHelp.value) {
+        AlertDialog(
+            onDismissRequest = { showWhatsAppHelp.value = false },
+            title = { Text("Abrir WhatsApp") },
+            text = { Text(WhatsAppUIHelper.getOpenWhatsAppHelpText()) },
+            confirmButton = {
+                Button(onClick = { showWhatsAppHelp.value = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+
+    if (whatsAppError.value.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { whatsAppError.value = "" },
+            title = { Text("Información") },
+            text = { Text(whatsAppError.value) },
+            confirmButton = {
+                Button(onClick = { whatsAppError.value = "" }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -342,9 +524,144 @@ private fun JobMetadataCard(job: JobFile) {
             MetadataRow("Estado:", job.status.name)
             MetadataRow("Creado:", formatDate(job.createdAt))
             MetadataRow("Actualizado:", formatDate(job.updatedAt))
+            
+            // WhatsApp buttons (v0.7.3 - with phone validation and error handling)
+            if (job.phone.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (WhatsAppUIHelper.isWhatsAppInstalled(context)) {
+                        Button(
+                            onClick = {
+                                val (success, message) = WhatsAppUIHelper.openWhatsApp(context, job.phone)
+                                if (!success) {
+                                    whatsAppError.value = message
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                        ) {
+                            Text("💬 WhatsApp")
+                        }
+                    }
+                    if (WhatsAppUIHelper.isWhatsAppBusinessInstalled(context)) {
+                        Button(
+                            onClick = {
+                                val (success, message) = WhatsAppUIHelper.openWhatsAppBusiness(context, job.phone)
+                                if (!success) {
+                                    whatsAppError.value = message
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                        ) {
+                            Text("💼 Business")
+                        }
+                    }
+                    Button(
+                        onClick = { showWhatsAppHelp.value = true },
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(0.dp)
+                    ) {
+                        Text("?")
+                    }
+                }
+            }
         }
     }
 }
+
+/**
+ * Activity Status Explanation Card - v0.8.2
+ * Clarifies the meaning of each activity status and relationship to pending items
+ */
+@Composable
+private fun ActivityStatusExplanationCard(status: JobStatus) {
+    val (icon, title, description, note) = when (status) {
+        JobStatus.ACTIVE -> {
+            val desc = "Esta actividad está en progreso. Puedes agregar evidencia, tareas y notas."
+            val n = "Nota: Completar todas las tareas pendientes NO marca automáticamente la actividad como completada. Debes hacerlo manualmente."
+            Quadruple(
+                "🟢",
+                "Activo",
+                desc,
+                n
+            )
+        }
+        JobStatus.COMPLETED -> {
+            val desc = "Esta actividad ha sido finalizada. Puedes revisar la evidencia y generar reportes."
+            val n = "Nota: Las tareas pendientes no se eliminan. Puedes seguir agregando evidencia si es necesario."
+            Quadruple(
+                "✅",
+                "Completado",
+                desc,
+                n
+            )
+        }
+        JobStatus.ARCHIVED -> {
+            val desc = "Esta actividad está archivada. No puedes hacer cambios, pero puedes revisar el historial."
+            val n = "Nota: Archiva cuando ya no necesites trabajar en esta actividad."
+            Quadruple(
+                "📦",
+                "Archivado",
+                desc,
+                n
+            )
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(icon, style = MaterialTheme.typography.headlineSmall)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Helper data class for status explanation
+ */
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 /**
  * Displays a metadata row with label and value.
@@ -1230,6 +1547,110 @@ private fun PdfReportSection(
                 enabled = !isGenerating
             ) {
                 Text(if (isGenerating) "Generando..." else "Generar Reporte PDF")
+            }
+        }
+    }
+}
+
+/**
+ * Displays the Report Notes section where users can add/edit notes for the PDF report.
+ */
+@Composable
+private fun ReportNotesSection(
+    job: JobFile,
+    jobId: String,
+    storageManager: StorageManager,
+    onReportNotesUpdated: () -> Unit
+) {
+    val showEditForm = remember { mutableStateOf(false) }
+    val reportNotesText = remember { mutableStateOf(job.reportNotes) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Notas del Reporte",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Button(
+                    onClick = { showEditForm.value = !showEditForm.value },
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text(if (showEditForm.value) "Cancelar" else "✏️ Editar")
+                }
+            }
+
+            if (showEditForm.value) {
+                Spacer(modifier = Modifier.height(12.dp))
+                TextField(
+                    value = reportNotesText.value,
+                    onValueChange = { reportNotesText.value = it },
+                    label = { Text("Notas para el reporte PDF") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    maxLines = 6,
+                    placeholder = { Text("Agregue notas que aparecerán en el reporte PDF...") }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val updatedJob = job.copy(reportNotes = reportNotesText.value)
+                            storageManager.saveJobMetadata(updatedJob)
+                            showEditForm.value = false
+                            onReportNotesUpdated()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text("Guardar")
+                    }
+                    Button(
+                        onClick = {
+                            reportNotesText.value = job.reportNotes
+                            showEditForm.value = false
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (job.reportNotes.isNotBlank()) {
+                    Text(
+                        job.reportNotes,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    Text(
+                        "Sin notas de reporte aún",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

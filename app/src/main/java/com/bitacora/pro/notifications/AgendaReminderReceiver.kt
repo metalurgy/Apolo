@@ -1,9 +1,11 @@
 package com.bitacora.pro.notifications
 
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.bitacora.pro.R
@@ -52,6 +54,7 @@ class AgendaReminderReceiver : BroadcastReceiver() {
 
     /**
      * Creates and displays a notification for the agenda reminder.
+     * Ensures notification channel is created on Android 8+.
      */
     private fun showNotification(
         context: Context,
@@ -63,19 +66,35 @@ class AgendaReminderReceiver : BroadcastReceiver() {
         try {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+            // Create notification channel for Android 8+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    "Recordatorios de Agenda",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notificaciones de recordatorio para elementos de agenda"
+                    enableVibration(true)
+                    enableLights(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+                Log.d(TAG, "Notification channel created: $NOTIFICATION_CHANNEL_ID")
+            }
+
             // Create the notification
             val notification = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("Recordatorio: $title")
+                .setContentTitle("🔔 Recordatorio: $title")
                 .setContentText("Tienes un elemento de agenda pendiente")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVibrate(longArrayOf(0, 500, 250, 500))
                 .build()
 
             // Show the notification
             notificationManager.notify(notificationId, notification)
-            Log.d(TAG, "Notification displayed: id=$notificationId")
+            Log.d(TAG, "Notification displayed: id=$notificationId, title=$title")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing notification: ${e.message}", e)
         }
