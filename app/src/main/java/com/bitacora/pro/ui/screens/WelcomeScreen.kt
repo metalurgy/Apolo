@@ -174,7 +174,7 @@ fun WelcomeScreen(
 
             // Version info
             Text(
-                "v0.8.0 - Daily Copilot",
+                "v0.9.0 - Product Polish & Assistant",
                 fontSize = 12.sp,
                 color = Color(0xFFB2EBE7),
                 textAlign = TextAlign.Center

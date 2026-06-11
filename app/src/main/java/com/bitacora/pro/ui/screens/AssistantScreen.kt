@@ -50,7 +50,8 @@ fun AssistantScreen(
     onReviewMissing: () -> Unit,
     onCaptureEvidence: () -> Unit,
     onPrepareReport: () -> Unit,
-    onCloseActivity: () -> Unit
+    onCloseActivity: () -> Unit,
+    onAskQuestion: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -125,6 +126,16 @@ fun AssistantScreen(
                         description = "Marca actividades como completadas",
                         actionLabel = "Ir a actividades",
                         onClick = onCloseActivity
+                    )
+                }
+
+                item {
+                    AssistantActionCard(
+                        icon = "❓",
+                        title = "Pregunta al Asistente",
+                        description = "Haz preguntas sobre cómo usar Bitacora Pro",
+                        actionLabel = "Preguntar",
+                        onClick = onAskQuestion
                     )
                 }
             }

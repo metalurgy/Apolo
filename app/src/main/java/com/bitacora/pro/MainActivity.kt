@@ -21,6 +21,8 @@ import com.bitacora.pro.data.models.SharedFileDescriptor
 import com.bitacora.pro.data.storage.StorageManager
 import com.bitacora.pro.ui.navigation.NavRoutes
 import com.bitacora.pro.data.storage.InboxManager
+import com.bitacora.pro.ui.screens.AboutScreen
+import com.bitacora.pro.ui.screens.AskScreen
 import com.bitacora.pro.ui.screens.AssistantScreen
 import com.bitacora.pro.ui.screens.CreateJobScreen
 import com.bitacora.pro.ui.screens.DailyAgendaScreen
@@ -109,6 +111,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onAssistantClick = {
                                 navController.navigate(NavRoutes.ASSISTANT)
+                            },
+                            onAboutClick = {
+                                navController.navigate(NavRoutes.ABOUT)
                             }
                         )
                     }
@@ -220,7 +225,27 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(NavRoutes.HOME) {
                                     popUpTo(NavRoutes.ASSISTANT) { inclusive = true }
                                 }
+                            },
+                            onAskQuestion = {
+                                navController.navigate(NavRoutes.ASK)
                             }
+                        )
+                    }
+
+                    composable(NavRoutes.ASK) {
+                        AskScreen(
+                            onBackClick = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable(NavRoutes.ABOUT) {
+                        AboutScreen(
+                            onBackClick = {
+                                navController.popBackStack()
+                            },
+                            storageManager = storageManager
                         )
                     }
                 }

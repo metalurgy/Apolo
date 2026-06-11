@@ -11,6 +11,9 @@
 
     <!-- Permission for camera capture (v0.8.2) - required for "Tomar foto" button -->
     <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Camera hardware feature is optional (for ChromeOS compatibility) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- NO internet permission - all processing is local -->
     <!-- NO accessibility service permission - no background access -->
