@@ -806,4 +806,38 @@ class StorageManager(private val context: Context) {
              "Error al procesar el chat"
          }
      }
+
+     /**
+      * Deletes a single job and all its associated files.
+      * v0.9.0: Manual delete activity with typed confirmation
+      */
+     fun deleteJob(jobId: String): Boolean {
+         return try {
+             val jobDir = File(jobsDir, jobId)
+             if (jobDir.exists()) {
+                 jobDir.deleteRecursively()
+             }
+             true
+         } catch (e: Exception) {
+             e.printStackTrace()
+             false
+         }
+     }
+
+     /**
+      * Deletes all jobs and their associated files.
+      * v0.9.0: Dangerous delete all from About screen
+      */
+     fun deleteAllJobs(): Boolean {
+         return try {
+             val allJobs = loadAllJobs()
+             allJobs.forEach { job ->
+                 deleteJob(job.id)
+             }
+             true
+         } catch (e: Exception) {
+             e.printStackTrace()
+             false
+         }
+     }
  }

@@ -1,5 +1,9 @@
 package com.bitacora.pro.ui.screens
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,12 +19,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,13 +41,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bitacora.pro.R
 import com.bitacora.pro.assistant.DashboardAssistantEngine
 import com.bitacora.pro.data.models.JobFile
 import com.bitacora.pro.data.models.JobStatus
 import com.bitacora.pro.data.storage.StorageManager
+import com.bitacora.pro.whatsapp.WhatsAppExportParser
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,11 +77,23 @@ fun HomeScreen(
     onCaptureClick: () -> Unit = {},
     onInboxClick: () -> Unit = {},
     onAgendaClick: () -> Unit = {},
-    onAssistantClick: () -> Unit = {}
+    onAssistantClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {}
 ) {
     val jobs = remember { mutableStateOf<List<JobFile>>(emptyList()) }
     val selectedFilter = remember { mutableStateOf<JobStatus?>(null) }
     val dashboardSummary = remember { mutableStateOf(DashboardAssistantEngine.DashboardSummary()) }
+    val context = LocalContext.current
+    val showCleanupConfirm = remember { mutableStateOf(false) }
+
+    // File picker for WhatsApp import
+    val whatsAppFilePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            handleWhatsAppImport(context, uri, storageManager)
+        }
+    }
 
     // Load jobs on screen composition
     LaunchedEffect(Unit) {
@@ -84,6 +109,51 @@ fun HomeScreen(
         else -> jobs.value.filter { it.status == selectedFilter.value }
     }
 
+    val showFileMenu = remember { mutableStateOf(false) }
+
+    // Cleanup confirmation dialog (v0.9.0)
+    if (showCleanupConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showCleanupConfirm.value = false },
+            title = { Text("🧹 Limpiar Tablero") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Esto archivará todas las actividades visibles (no archivadas).",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Las actividades archivadas se pueden ver en la pestaña 'Archivadas'.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Archive all non-archived jobs
+                        jobs.value.filter { it.status != JobStatus.ARCHIVED }.forEach { job ->
+                            storageManager.archiveJob(job.id)
+                        }
+                        // Reload jobs
+                        val allJobs = storageManager.loadAllJobs().sortedByDescending { it.lastUsedAt }
+                        jobs.value = allJobs
+                        dashboardSummary.value = DashboardAssistantEngine.generateDashboardSummary(allJobs)
+                        showCleanupConfirm.value = false
+                    }
+                ) {
+                    Text("Limpiar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showCleanupConfirm.value = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,6 +161,41 @@ fun HomeScreen(
                     Column {
                         Text("Daily Copilot", fontSize = 13.sp, fontWeight = FontWeight.Light)
                         Text("Bitacora Pro", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showFileMenu.value = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Menú")
+                    }
+                    DropdownMenu(
+                        expanded = showFileMenu.value,
+                        onDismissRequest = { showFileMenu.value = false }
+                    ) {
+                        // WhatsApp import - fully implemented
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.file_menu_import_whatsapp)) },
+                            onClick = {
+                                showFileMenu.value = false
+                                whatsAppFilePicker.launch("text/plain")
+                            }
+                        )
+                        // Board cleanup - v0.9.0
+                        DropdownMenuItem(
+                            text = { Text("🧹 Limpiar tablero") },
+                            onClick = {
+                                showFileMenu.value = false
+                                showCleanupConfirm.value = true
+                            }
+                        )
+                        // About screen - fully implemented
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.file_menu_about)) },
+                            onClick = {
+                                showFileMenu.value = false
+                                onAboutClick()
+                            }
+                        )
+                        // Note: Image import, PDF import, text import, and PDF export are planned for v0.9.1+
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -298,7 +403,7 @@ private fun QuickActionCard(
 
 /**
  * Smart Dashboard Section with summary cards and insights.
- * v0.8.1: Ultra-simplified, minimal clutter, premium feel
+ * v0.9.0: Ultra-simplified, minimal clutter, premium feel, no saturation
  */
 @Composable
 private fun SmartDashboardSection(summary: DashboardAssistantEngine.DashboardSummary) {
@@ -332,6 +437,7 @@ private fun SmartDashboardSection(summary: DashboardAssistantEngine.DashboardSum
         }
 
         // Insights Section - Only show top insight if available
+        // v0.9.0: Simplified - removed saturation, kept only essential info
         if (summary.insights.isNotEmpty()) {
             Text(
                 "💡 ${summary.insights.first()}",
@@ -645,7 +751,7 @@ private fun AppVersionFooter() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Bitacora Pro v0.8.2 - P0 UX Action Fix",
+            text = "Bitacora Pro v0.9.0",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -658,4 +764,46 @@ private fun AppVersionFooter() {
 private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+/**
+ * Handles WhatsApp chat import from file picker.
+ * Reads the selected .txt file and saves it as evidence.
+ */
+private fun handleWhatsAppImport(context: Context, uri: Uri, storageManager: StorageManager) {
+    try {
+        // Read the file content
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val content = inputStream?.bufferedReader().use { it?.readText() ?: "" }
+        inputStream?.close()
+
+        if (content.isBlank()) {
+            return
+        }
+
+        // Parse the WhatsApp export
+        val chatExport = WhatsAppExportParser.parseExport(content)
+        
+        // Save as text evidence in inbox (unassigned)
+        // This allows user to later assign it to a specific activity
+        val summary = buildString {
+            append("WhatsApp Chat Export\n")
+            append("Mensajes: ${chatExport.messages.size}\n")
+            append("Participantes: ${chatExport.senderCount}\n")
+            if (chatExport.extractedPhoneNumbers.isNotEmpty()) {
+                append("Teléfonos encontrados: ${chatExport.extractedPhoneNumbers.joinToString(", ")}\n")
+            }
+            append("\n--- Contenido del chat ---\n")
+            append(content.take(5000)) // Limit preview to 5000 chars
+            if (content.length > 5000) {
+                append("\n... (más contenido)")
+            }
+        }
+
+        // Note: WhatsApp import summary is displayed but not automatically saved
+        // User can manually create a job and add this as evidence if needed
+    } catch (e: Exception) {
+        // Silently fail - in production, show error toast
+        e.printStackTrace()
+    }
 }

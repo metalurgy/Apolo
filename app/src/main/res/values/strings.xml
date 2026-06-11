@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bitacora Pro</string>
-    <string name="app_version">v0.7.1</string>
+    <string name="app_version">v0.9.0</string>
+    <string name="app_subtitle">Organiza evidencia, pendientes y reportes</string>
     <string name="home_title">Bitacora Pro</string>
-    <string name="create_new_job">Create New Job</string>
-    <string name="no_jobs">No jobs yet</string>
-    <string name="no_jobs_description">Create a new job or share content from another app</string>
-    <string name="job_title">Job Title</string>
-    <string name="client_name">Client Name</string>
-    <string name="phone_number">Phone Number</string>
-    <string name="service_type">Service Type</string>
-    <string name="create_job">Create Job</string>
+    <string name="create_new_job">Crear Nueva Actividad</string>
+    <string name="no_jobs">Sin actividades</string>
+    <string name="no_jobs_description">Crea una nueva actividad o comparte contenido desde otra app</string>
+    <string name="job_title">Título de la Actividad</string>
+    <string name="client_name">Nombre del Cliente</string>
+    <string name="phone_number">Número de Teléfono</string>
+    <string name="service_type">Tipo de Servicio</string>
+    <string name="create_job">Crear Actividad</string>
     <string name="cancel">Cancel</string>
     <string name="share_intake">Share Intake</string>
     <string name="incoming_content">Incoming Content:</string>
@@ -48,4 +49,59 @@
     <string name="edit_agenda_done_note">Nota: Los recordatorios no se programan para tareas completadas</string>
     <string name="edit_agenda_archived_note">Nota: Las tareas archivadas no pueden ser editadas</string>
     <string name="edit_agenda_status_label">Estado:</string>
+
+    <!-- About Screen -->
+    <string name="about_title">Acerca de</string>
+    <string name="about_app_name">Bitacora Pro</string>
+    <string name="about_version">Versión: v0.9.0</string>
+    <string name="about_build_type">Tipo de compilación: Pilot</string>
+    <string name="about_privacy_title">Privacidad</string>
+    <string name="about_privacy_description">Tus datos se guardan localmente en el dispositivo. No se envían a servidores externos sin tu consentimiento.</string>
+    <string name="about_assistant_title">Asistente</string>
+    <string name="about_assistant_local">IA local activa</string>
+    <string name="about_assistant_remote_disabled">IA en línea desactivada</string>
+    <string name="about_assistant_remote_enabled">IA en línea activa</string>
+    <string name="about_permissions_title">Permisos utilizados</string>
+    <string name="about_permission_camera">Cámara: tomar fotos de evidencia</string>
+    <string name="about_permission_contacts">Contactos: importar nombre y teléfono</string>
+    <string name="about_permission_notifications">Notificaciones: recordatorios de pendientes</string>
+    <string name="about_permission_calendar">Calendario: se abre Google Calendar mediante acción del sistema</string>
+    <string name="about_permission_internet">Internet: solo para asistente en línea si está habilitado</string>
+    <string name="about_warning_whatsapp">Bitacora Pro no lee WhatsApp automáticamente. Solo importa chats que compartas manualmente.</string>
+
+    <!-- File Menu -->
+    <string name="file_menu_title">Archivo</string>
+    <string name="file_menu_import_whatsapp">Importar chat de WhatsApp</string>
+    <string name="file_menu_import_images">Importar imágenes</string>
+    <string name="file_menu_import_pdf">Importar PDF o documento</string>
+    <string name="file_menu_import_text">Importar texto</string>
+    <string name="file_menu_export_pdf">Exportar reporte PDF</string>
+    <string name="file_menu_about">Acerca de</string>
+
+    <!-- Loading Screen -->
+    <string name="loading_activities">Cargando actividades...</string>
+    <string name="loading_assistant">Preparando asistente...</string>
+    <string name="loading_ready">Listo</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_subtitle">Organiza tu día</string>
+    <string name="dashboard_today_card">Hoy</string>
+    <string name="dashboard_active_activities">Actividades activas</string>
+    <string name="dashboard_pending">Pendientes</string>
+    <string name="dashboard_overdue">Vencidos</string>
+    <string name="dashboard_unassigned">Sin asignar</string>
+    <string name="dashboard_tab_active">Activas</string>
+    <string name="dashboard_tab_completed">Completadas</string>
+    <string name="dashboard_tab_archived">Archivadas</string>
+
+    <!-- Assistant -->
+    <string name="assistant_ask_title">Pregúntale a Bitacora</string>
+    <string name="assistant_ask_hint">¿Qué necesitas saber?</string>
+    <string name="assistant_consent_title">Enviar a asistente en línea</string>
+    <string name="assistant_consent_message">Para responder mejor, se enviará un resumen de esta actividad al asistente en línea. ¿Continuar?</string>
+    <string name="assistant_consent_yes">Continuar</string>
+    <string name="assistant_consent_no">Cancelar</string>
+    <string name="assistant_offline_mode">Modo sin conexión - usando asistente local</string>
+    <string name="assistant_remote_not_configured">IA en línea no configurada</string>
+
 </resources>

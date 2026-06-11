@@ -95,6 +95,8 @@ fun JobDetailScreen(
     val isAnalyzingJob = remember { mutableStateOf(false) }
     val assistantErrorMessage = remember { mutableStateOf("") }
     val showArchiveConfirm = remember { mutableStateOf(false) }
+    val showDeleteConfirm = remember { mutableStateOf(false) }
+    val deleteConfirmText = remember { mutableStateOf("") }
     val context = LocalContext.current
     val cameraErrorMessage = remember { mutableStateOf("") }
     val pendingCameraFile = remember { mutableStateOf<File?>(null) }
@@ -155,6 +157,59 @@ fun JobDetailScreen(
         )
     }
 
+    // Delete confirmation dialog (v0.9.0)
+    if (showDeleteConfirm.value && job.value != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm.value = false },
+            title = { Text("🗑️ Eliminar Actividad") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Esta acción eliminará PERMANENTEMENTE esta actividad, toda su evidencia y pendientes.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Para confirmar, escribe: ${job.value!!.title}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextField(
+                        value = deleteConfirmText.value,
+                        onValueChange = { deleteConfirmText.value = it },
+                        placeholder = { Text("Escribe aquí") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (deleteConfirmText.value == job.value!!.title) {
+                            storageManager.deleteJob(jobId)
+                            showDeleteConfirm.value = false
+                            deleteConfirmText.value = ""
+                            onBack()
+                        }
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    enabled = deleteConfirmText.value == job.value!!.title
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showDeleteConfirm.value = false
+                    deleteConfirmText.value = ""
+                }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -165,9 +220,16 @@ fun JobDetailScreen(
                     }
                 },
                 actions = {
-                    if (job.value != null && job.value!!.status != JobStatus.ARCHIVED) {
-                        IconButton(onClick = { showArchiveConfirm.value = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Archivar actividad")
+                    if (job.value != null) {
+                        // Delete button
+                        IconButton(onClick = { showDeleteConfirm.value = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Eliminar actividad")
+                        }
+                        // Archive button (only for non-archived activities)
+                        if (job.value!!.status != JobStatus.ARCHIVED) {
+                            IconButton(onClick = { showArchiveConfirm.value = true }) {
+                                Icon(Icons.Filled.Edit, contentDescription = "Archivar actividad")
+                            }
                         }
                     }
                 },
